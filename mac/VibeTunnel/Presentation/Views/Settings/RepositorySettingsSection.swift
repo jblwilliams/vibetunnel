@@ -29,11 +29,6 @@ struct RepositorySettingsSection: View {
         } header: {
             Text("Repository Discovery")
                 .font(.headline)
-        } footer: {
-            Text("Git repositories found in this directory will appear in the New Session form for quick access.")
-                .font(.caption)
-                .frame(maxWidth: .infinity)
-                .multilineTextAlignment(.center)
         }
     }
 

@@ -12,15 +12,6 @@ struct QuickStartSettingsSection: View {
     var body: some View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
-                // Header without Add button
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Quick Start Commands")
-                        .font(.headline)
-                    Text("Commands shown in the new session form for quick access.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
                 // Commands list
                 List {
                     ForEach(configManager.quickStartCommands) { command in
@@ -32,8 +23,8 @@ struct QuickStartSettingsSection: View {
                             onDelete: { deleteCommand(command) },
                             onStopEditing: { editingCommandId = nil }
                         )
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
+                        .listRowSeparator(.automatic)
+                        .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
                         .listRowBackground(Color.clear)
                     }
                     .onMove(perform: moveQuickStartItems)
@@ -72,14 +63,12 @@ struct QuickStartSettingsSection: View {
                         .padding(.vertical, 8)
                         .background(Color(NSColor.tertiaryLabelColor).opacity(0.1))
                         .cornerRadius(4)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
+                        .listRowSeparator(.automatic)
+                        .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
                         .listRowBackground(Color.clear)
                     }
                 }
                 .listStyle(.plain)
-                .background(Color(NSColor.tertiaryLabelColor).opacity(0.08))
-                .cornerRadius(6)
                 .frame(minHeight: 100)
                 .scrollContentBackground(.hidden)
 
@@ -109,7 +98,15 @@ struct QuickStartSettingsSection: View {
                     .buttonStyle(.bordered)
                     .disabled(showingNewCommand)
                 }
+                .padding(.horizontal)
             }
+        } header: {
+            Text("Quick Start Commands")
+                .font(.headline)
+        } footer: {
+            Text("Commands shown in the new session form for quick access.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 

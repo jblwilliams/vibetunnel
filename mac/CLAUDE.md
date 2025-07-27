@@ -259,19 +259,164 @@ log stream --predicate 'subsystem == "sh.vibetunnel.vibetunnel" AND category == 
 - Server logs (Node.js output) are under the "ServerOutput" category
 - Look for `[CLIENT:*]` prefix to identify frontend-originated logs
 
+## XcodeBuildMCP Usage Guide
+
+XcodeBuildMCP is an MCP (Model Context Protocol) server that provides comprehensive Xcode build and automation capabilities. It's the recommended way to build, test, and manage the VibeTunnel macOS project.
+
+### Installation
+
+If XcodeBuildMCP is not already installed, add it to Claude Code:
+
+```bash
+claude mcp add XcodeBuildMCP -- npx -y xcodebuildmcp@latest
+```
+
+### Common XcodeBuildMCP Commands for VibeTunnel
+
+#### Project Discovery
+```
+# Find Xcode projects in the repository
+discover_projs(workspaceRoot: "/Users/steipete/Projects/vibetunnel")
+
+# List available schemes
+list_schems_proj(projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj")
+```
+
+#### Building the Mac App
+```
+# Build for Debug configuration
+build_mac_proj(
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac",
+    configuration: "Debug"
+)
+
+# Build for Release configuration
+build_mac_proj(
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac",
+    configuration: "Release"
+)
+
+# Build with code signing
+build_mac_proj(
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac",
+    configuration: "Release",
+    extraArgs: ["CODE_SIGN_IDENTITY=Developer ID Application"]
+)
+```
+
+#### Running the App
+```
+# Build and run in one step
+build_run_mac_proj(
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac"
+)
+
+# Get the app bundle path after building
+get_mac_app_path_proj(
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac"
+)
+
+# Get bundle identifier
+get_mac_bundle_id(appPath: "/path/to/VibeTunnel.app")
+
+# Launch the app
+launch_mac_app(appPath: "/path/to/VibeTunnel.app")
+```
+
+#### Testing
+```
+# Run all tests
+test_macos_proj(
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac"
+)
+
+# Run tests with specific configuration
+test_macos_proj(
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac",
+    configuration: "Debug"
+)
+```
+
+#### Cleaning
+```
+# Clean build artifacts
+clean_proj(
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac"
+)
+```
+
+#### Build Settings
+```
+# Show build settings
+show_build_set_proj(
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac"
+)
+```
+
+### Tips for Using XcodeBuildMCP
+
+1. **Always use full paths**: XcodeBuildMCP requires absolute paths for project files
+2. **Check schemes first**: Use `list_schems_proj` to verify available schemes
+3. **Use proper configuration**: Debug for development, Release for distribution
+4. **Handle build failures**: If builds fail, check the error output and use `clean_proj` if needed
+5. **Incremental builds**: XcodeBuildMCP supports incremental builds by default for faster iteration
+
+### Common Workflows
+
+#### Development Build & Run
+```
+# Clean, build, and run for development
+clean_proj(projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj", scheme: "VibeTunnel-Mac")
+build_run_mac_proj(projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj", scheme: "VibeTunnel-Mac")
+```
+
+#### Release Build
+```
+# Build optimized release version
+build_mac_proj(
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac",
+    configuration: "Release",
+    extraArgs: ["ENABLE_HARDENED_RUNTIME=YES"]
+)
+```
+
+#### CI Build
+```
+# Build with derived data path for CI
+build_mac_proj(
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac",
+    configuration: "Release",
+    derivedDataPath: "/tmp/VibeTunnel-DerivedData"
+)
+```
+
 ## Testing
 
 ### Running macOS Tests
 
-**IMPORTANT**: macOS tests MUST be run using Xcode commands (XcodeBuildMCP), NOT with `swift test`:
-- Use XcodeBuildMCP test commands like `test_macos_ws` or `test_macos_proj`
+**IMPORTANT**: macOS tests MUST be run using XcodeBuildMCP commands, NOT with `swift test`:
+- Use XcodeBuildMCP test commands like `test_macos_proj`
 - Running tests with `swift test` will cause crashes, especially with UserNotifications framework
 - The test environment requires proper Xcode configuration and entitlements
 
 Example:
 ```
 # CORRECT - Use XcodeBuildMCP:
-test_macos_ws(workspacePath: "/path/to/VibeTunnel.xcworkspace", scheme: "VibeTunnelTests")
+test_macos_proj(
+    projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
+    scheme: "VibeTunnel-Mac"
+)
 
 # WRONG - Do NOT use:
 swift test

@@ -16,23 +16,11 @@ struct GeneralSettingsView: View {
     private var preventSleepWhenRunning = true
 
     @Environment(ConfigManager.self) private var configManager
-    @AppStorage(AppConstants.UserDefaultsKeys.serverPort)
-    private var serverPort = "4020"
-    @AppStorage(AppConstants.UserDefaultsKeys.dashboardAccessMode)
-    private var accessModeString = AppConstants.Defaults.dashboardAccessMode
 
     @State private var isCheckingForUpdates = false
-    @State private var localIPAddress: String?
-
-    @Environment(ServerManager.self)
-    private var serverManager
 
     private let startupManager = StartupManager()
     private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "GeneralSettings")
-
-    private var accessMode: DashboardAccessMode {
-        DashboardAccessMode(rawValue: accessModeString) ?? .localhost
-    }
 
     var updateChannel: UpdateChannel {
         UpdateChannel(rawValue: updateChannelRaw) ?? .stable
@@ -47,17 +35,6 @@ struct GeneralSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                // Server Configuration section
-                ServerConfigurationSection(
-                    accessMode: accessMode,
-                    accessModeString: $accessModeString,
-                    serverPort: $serverPort,
-                    localIPAddress: localIPAddress,
-                    restartServerWithNewBindAddress: restartServerWithNewBindAddress,
-                    restartServerWithNewPort: restartServerWithNewPort,
-                    serverManager: serverManager
-                )
-
                 // CLI Installation section
                 CLIInstallationSection()
 
@@ -216,12 +193,6 @@ struct GeneralSettingsView: View {
         .task {
             // Sync launch at login status
             autostart = startupManager.isLaunchAtLoginEnabled
-
-            // Update local IP address
-            updateLocalIPAddress()
-        }
-        .onAppear {
-            updateLocalIPAddress()
         }
     }
 
@@ -269,27 +240,6 @@ struct GeneralSettingsView: View {
         Task {
             try? await Task.sleep(for: .seconds(2))
             isCheckingForUpdates = false
-        }
-    }
-
-    private func restartServerWithNewPort(_ port: Int) {
-        Task {
-            await ServerConfigurationHelpers.restartServerWithNewPort(port, serverManager: serverManager)
-        }
-    }
-
-    private func restartServerWithNewBindAddress() {
-        Task {
-            await ServerConfigurationHelpers.restartServerWithNewBindAddress(
-                accessMode: accessMode,
-                serverManager: serverManager
-            )
-        }
-    }
-
-    private func updateLocalIPAddress() {
-        Task {
-            localIPAddress = await ServerConfigurationHelpers.updateLocalIPAddress(accessMode: accessMode)
         }
     }
 }
