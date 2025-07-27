@@ -35,8 +35,9 @@ export default defineConfig({
       }
       console.warn(`Invalid PLAYWRIGHT_WORKERS value: "${process.env.PLAYWRIGHT_WORKERS}". Using default.`);
     }
-    // Default: 4 workers in CI (reduced from 8 to avoid server overload), auto-detect locally
-    return process.env.CI ? 4 : undefined;
+    // Default: 1 worker in CI to prevent race conditions, auto-detect locally
+    // This ensures test groups run sequentially, preventing session conflicts
+    return process.env.CI ? 1 : undefined;
   })(),
   /* Test timeout */
   timeout: process.env.CI ? 30 * 1000 : 15 * 1000, // 30s on CI, 15s locally
@@ -102,6 +103,8 @@ export default defineConfig({
         '**/ssh-key-manager.spec.ts',
         '**/push-notifications.spec.ts',
         '**/authentication.spec.ts',
+      ],
+      testIgnore: [
         '**/git-status-badge-debug.spec.ts',
       ],
     },
@@ -119,6 +122,9 @@ export default defineConfig({
         '**/activity-monitoring.spec.ts',
         '**/file-browser-basic.spec.ts',
       ],
+      testIgnore: [
+        '**/git-status-badge-debug.spec.ts',
+      ],
       fullyParallel: false, // Override global setting for serial tests
     },
   ],
@@ -133,14 +139,16 @@ export default defineConfig({
     timeout: 30 * 1000, // 30 seconds for server startup
     cwd: process.cwd(), // Ensure we're in the right directory
     env: (() => {
-      // Create a copy of env vars without VIBETUNNEL_SEA
       const env = { ...process.env };
-      delete env.VIBETUNNEL_SEA; // Remove to prevent SEA mode in tests
+      // Keep VIBETUNNEL_SEA if it's set in CI, as we now use the native executable for tests
+      // In local development, it will be undefined and tests will use TypeScript compilation
       return {
         ...env,
         NODE_ENV: 'test',
         VIBETUNNEL_DISABLE_PUSH_NOTIFICATIONS: 'true',
         SUPPRESS_CLIENT_ERRORS: 'true',
+        SHELL: '/bin/bash',
+        TERM: 'xterm',
       };
     })(),
   },

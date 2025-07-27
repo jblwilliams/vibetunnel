@@ -57,14 +57,15 @@ test.describe('Session Navigation', () => {
     // Verify we can see session cards - wait for session list to load
     await waitForSessionListReady(page);
 
+    // Ensure all sessions are visible (including exited ones)
+    const { ensureAllSessionsVisible } = await import('../helpers/ui-state.helper');
+    await ensureAllSessionsVisible(page);
+
     // Ensure our specific session card is visible
     await page.waitForSelector(`session-card:has-text("${sessionName}")`, {
       state: 'visible',
       timeout: 10000,
     });
-
-    // Wait for any animations or transitions to complete
-    await page.waitForLoadState('domcontentloaded');
 
     // Ensure no modals are open that might block clicks
     await closeModalIfOpen(page);

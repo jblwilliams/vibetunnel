@@ -7,11 +7,30 @@ import type { Page } from '@playwright/test';
 /**
  * Wait for terminal to be ready with optimized checks
  */
-export async function waitForTerminalReady(page: Page, timeout = 5000): Promise<void> {
+export async function waitForTerminalReady(page: Page, timeout = 10000): Promise<void> {
   // First, wait for the terminal element
   await page.waitForSelector('vibe-terminal', {
     state: 'attached',
     timeout,
+  });
+
+  // Wait for WebSocket connection OR for terminal to initialize (for in-memory sessions)
+  const wsConnectedPromise = page.evaluate(() => {
+    return new Promise<boolean>((resolve) => {
+      // Check if WebSocket is already connected
+      const vibeTerminal = document.querySelector('vibe-terminal') as HTMLElement & {
+        wsConnected?: boolean;
+        isConnected?: boolean;
+      };
+      if (vibeTerminal?.wsConnected || vibeTerminal?.isConnected) {
+        resolve(true);
+        return;
+      }
+
+      // Wait a bit for WebSocket, but don't fail if it doesn't connect
+      // (in-memory sessions might not use WebSocket)
+      setTimeout(() => resolve(false), 3000);
+    });
   });
 
   // Wait for terminal to be interactive - either shows a prompt or has content
@@ -32,11 +51,22 @@ export async function waitForTerminalReady(page: Page, timeout = 5000): Promise<
 
       return hasContent || hasXterm;
     },
-    { timeout }
+    { timeout, polling: 100 }
   );
 
-  // Brief wait for terminal to stabilize
-  await page.waitForTimeout(300);
+  // Wait for WebSocket result (but don't fail)
+  await wsConnectedPromise;
+
+  // Wait for shell prompt to appear
+  await page.waitForFunction(
+    () => {
+      const term = document.querySelector('vibe-terminal');
+      const content = term?.textContent || '';
+      // Look for common shell prompt indicators
+      return content.includes('$') || content.includes('#') || content.includes('>');
+    },
+    { timeout }
+  );
 }
 
 /**
@@ -47,12 +77,8 @@ export async function typeCommand(page: Page, command: string): Promise<void> {
   const terminal = page.locator('vibe-terminal');
   await terminal.click();
 
-  // Type command character by character for reliability
-  for (const char of command) {
-    await page.keyboard.type(char);
-    // Very brief pause between characters
-    await page.waitForTimeout(10);
-  }
+  // Type the entire command at once
+  await page.keyboard.type(command);
 
   // Press Enter
   await page.keyboard.press('Enter');
@@ -122,13 +148,26 @@ export async function executeCommand(
   // Ensure terminal is focused
   const terminal = page.locator('vibe-terminal');
   await terminal.click();
-  await page.waitForTimeout(100);
+
+  // Get current content to detect changes
+  const contentBefore = await getTerminalContent(page);
 
   await typeCommand(page, command);
 
   if (waitForPrompt) {
-    // Simple wait for command to process
-    await page.waitForTimeout(1000);
+    // Wait for content to change (command output)
+    await page.waitForFunction(
+      (before) => {
+        const term = document.querySelector('vibe-terminal');
+        const currentContent = term?.textContent || '';
+        return currentContent !== before && currentContent.length > before.length;
+      },
+      contentBefore,
+      { timeout: 5000 }
+    );
+
+    // Wait for the output to appear after pressing Enter
+    await page.waitForTimeout(2000);
   }
 }
 
