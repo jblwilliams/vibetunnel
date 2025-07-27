@@ -39,7 +39,7 @@ export interface TestServerResult {
 /**
  * Create a test server with properly initialized services
  */
-export function createTestServer(options: TestServerOptions = {}): TestServerResult {
+export async function createTestServer(options: TestServerOptions = {}): Promise<TestServerResult> {
   const {
     controlPath,
     isHQMode = false,
@@ -50,6 +50,9 @@ export function createTestServer(options: TestServerOptions = {}): TestServerRes
       config: true,
     },
   } = options;
+
+  // Initialize PtyManager before creating instance
+  await PtyManager.initialize();
 
   // Initialize services
   const ptyManager = new PtyManager(controlPath);

@@ -17,7 +17,7 @@ describe('Worktree Workflows Integration Tests', () => {
     gitRepo = await createStandardTestRepo();
 
     // Create test server with all services properly initialized
-    testServer = createTestServer({
+    testServer = await createTestServer({
       includeRoutes: {
         sessions: true,
         worktrees: true,

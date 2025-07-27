@@ -425,7 +425,7 @@ describe('ConfigService', () => {
       const preferences = configService.getNotificationPreferences();
       // Should return DEFAULT_NOTIFICATION_PREFERENCES instead of undefined
       expect(preferences).toEqual({
-        enabled: true,
+        enabled: false, // Master switch is OFF by default
         sessionStart: true,
         sessionExit: true,
         commandCompletion: true,
