@@ -98,17 +98,24 @@ struct QuickStartSettingsSection: View {
                     HStack(spacing: 4) {
                         Button(action: addCommand) {
                             Image(systemName: "plus")
-                                .font(.system(size: 11))
+                                .font(.system(size: 11, weight: .medium))
                                 .frame(width: 20, height: 20)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.accessoryBar)
 
                         Button(action: deleteSelected) {
-                            Image(systemName: "minus")
-                                .font(.system(size: 11))
-                                .frame(width: 20, height: 20)
-                                .contentShape(Rectangle())
+                            ZStack {
+                                // Invisible plus to match the size
+                                Image(systemName: "plus")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .opacity(0)
+                                // Visible minus
+                                Image(systemName: "minus")
+                                    .font(.system(size: 11, weight: .medium))
+                            }
+                            .frame(width: 20, height: 20)
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.accessoryBar)
                         .disabled(selection.isEmpty)
