@@ -36,6 +36,7 @@ struct ServerSessionInfo: Codable {
     let remoteId: String?
     let remoteName: String?
     let remoteUrl: String?
+    let attachedViaVT: Bool?
 
     var isRunning: Bool {
         status == "running"

@@ -335,6 +335,9 @@ export class PtyManager extends EventEmitter {
       logger.debug(chalk.blue(`Creating PTY session with command: ${resolvedCommand.join(' ')}`));
       logger.debug(`Working directory: ${workingDir}`);
 
+      // Check if this session is being spawned from within VibeTunnel
+      const attachedViaVT = !!process.env.VIBETUNNEL_SESSION_ID;
+
       // Create initial session info with resolved command
       const sessionInfo: SessionInfo = {
         id: sessionId,
@@ -354,6 +357,7 @@ export class PtyManager extends EventEmitter {
         gitHasChanges: options.gitHasChanges,
         gitIsWorktree: options.gitIsWorktree,
         gitMainRepoPath: options.gitMainRepoPath,
+        attachedViaVT,
       };
 
       // Save initial session info
