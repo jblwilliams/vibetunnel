@@ -11,6 +11,46 @@ extension Logger {
     )
 }
 
+// MARK: - FileSystemScanner
+
+/// Actor to handle file system operations off the main thread
+private actor FileSystemScanner {
+    /// Scan directory contents
+    func scanDirectory(at url: URL) throws -> [URL] {
+        try FileManager.default.contentsOfDirectory(
+            at: url,
+            includingPropertiesForKeys: [.isDirectoryKey, .isHiddenKey],
+            options: [.skipsSubdirectoryDescendants]
+        )
+    }
+
+    /// Check if path is readable
+    func isReadable(at path: String) -> Bool {
+        FileManager.default.isReadableFile(atPath: path)
+    }
+
+    /// Check if Git repository exists
+    func isGitRepository(at path: String) -> Bool {
+        let gitPath = URL(fileURLWithPath: path).appendingPathComponent(".git").path
+        return FileManager.default.fileExists(atPath: gitPath)
+    }
+
+    /// Get modification date for a file
+    func getModificationDate(at path: String) throws -> Date {
+        let attributes = try FileManager.default.attributesOfItem(atPath: path)
+        return attributes[.modificationDate] as? Date ?? Date.distantPast
+    }
+
+    /// Get directory and hidden status for URL
+    func getDirectoryStatus(for url: URL) throws -> (isDirectory: Bool, isHidden: Bool) {
+        let resourceValues = try url.resourceValues(forKeys: [.isDirectoryKey, .isHiddenKey])
+        return (
+            isDirectory: resourceValues.isDirectory ?? false,
+            isHidden: resourceValues.isHidden ?? false
+        )
+    }
+}
+
 /// Service for discovering Git repositories in a specified directory
 ///
 /// Provides functionality to scan a base directory for Git repositories and
@@ -35,6 +75,9 @@ public final class RepositoryDiscoveryService {
 
     /// Maximum depth to search for repositories (prevents infinite recursion)
     private let maxSearchDepth = 3
+
+    /// File system scanner actor for background operations
+    private let fileScanner = FileSystemScanner()
 
     // MARK: - Lifecycle
 
@@ -85,7 +128,10 @@ public final class RepositoryDiscoveryService {
 
     /// Perform the actual discovery work
     private func performDiscovery(in basePath: String) async -> [DiscoveredRepository] {
-        let allRepositories = await scanDirectory(basePath, depth: 0)
+        // Move the heavy file system work to a background actor
+        let allRepositories = await Task.detached(priority: .userInitiated) {
+            await self.scanDirectory(basePath, depth: 0)
+        }.value
 
         // Sort by folder name for consistent display
         return allRepositories.sorted { $0.folderName < $1.folderName }
@@ -103,37 +149,32 @@ public final class RepositoryDiscoveryService {
         }
 
         do {
-            let fileManager = FileManager.default
             let url = URL(fileURLWithPath: path)
 
-            // Check if directory is accessible
-            guard fileManager.isReadableFile(atPath: path) else {
+            // Check if directory is accessible using actor
+            guard await fileScanner.isReadable(at: path) else {
                 Logger.repositoryDiscovery.debug("Directory not readable: \(path)")
                 return []
             }
 
-            // Get directory contents
-            let contents = try fileManager.contentsOfDirectory(
-                at: url,
-                includingPropertiesForKeys: [.isDirectoryKey, .isHiddenKey],
-                options: [.skipsSubdirectoryDescendants]
-            )
+            // Get directory contents using actor
+            let contents = try await fileScanner.scanDirectory(at: url)
 
             var repositories: [DiscoveredRepository] = []
 
             for itemURL in contents {
-                let resourceValues = try itemURL.resourceValues(forKeys: [.isDirectoryKey, .isHiddenKey])
+                let (isDirectory, isHidden) = try await fileScanner.getDirectoryStatus(for: itemURL)
 
                 // Skip files and hidden directories (except .git)
-                guard resourceValues.isDirectory == true else { continue }
-                if resourceValues.isHidden == true && itemURL.lastPathComponent != ".git" {
+                guard isDirectory else { continue }
+                if isHidden && itemURL.lastPathComponent != ".git" {
                     continue
                 }
 
                 let itemPath = itemURL.path
 
-                // Check if this directory is a Git repository
-                if isGitRepository(at: itemPath) {
+                // Check if this directory is a Git repository using actor
+                if await fileScanner.isGitRepository(at: itemPath) {
                     let repository = await createDiscoveredRepository(at: itemPath)
                     repositories.append(repository)
                 } else {
@@ -150,24 +191,20 @@ public final class RepositoryDiscoveryService {
         }
     }
 
-    /// Check if a directory is a Git repository
-    private func isGitRepository(at path: String) -> Bool {
-        let gitPath = URL(fileURLWithPath: path).appendingPathComponent(".git").path
-        return FileManager.default.fileExists(atPath: gitPath)
-    }
-
     /// Create a DiscoveredRepository from a path
     private func createDiscoveredRepository(at path: String) async -> DiscoveredRepository {
         let url = URL(fileURLWithPath: path)
         let folderName = url.lastPathComponent
 
         // Get last modified date
-        let lastModified = getLastModifiedDate(at: path)
+        let lastModified = await getLastModifiedDate(at: path)
 
-        // Get GitHub URL (this might be slow, so we do it in background)
-        let githubURL = GitRepository.getGitHubURL(for: path)
+        // Get GitHub URL in parallel (this might be slow)
+        async let githubURL = Task.detached(priority: .background) {
+            GitRepository.getGitHubURL(for: path)
+        }.value
 
-        return DiscoveredRepository(
+        return await DiscoveredRepository(
             path: path,
             folderName: folderName,
             lastModified: lastModified,
@@ -176,10 +213,9 @@ public final class RepositoryDiscoveryService {
     }
 
     /// Get the last modified date of a repository
-    private func getLastModifiedDate(at path: String) -> Date {
+    private func getLastModifiedDate(at path: String) async -> Date {
         do {
-            let attributes = try FileManager.default.attributesOfItem(atPath: path)
-            return attributes[.modificationDate] as? Date ?? Date.distantPast
+            return try await fileScanner.getModificationDate(at: path)
         } catch {
             Logger.repositoryDiscovery.debug("Could not get modification date for \(path): \(error)")
             return Date.distantPast
