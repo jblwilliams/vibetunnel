@@ -163,24 +163,23 @@ struct NewSessionForm: View {
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.secondary)
 
-                        VStack(alignment: .leading, spacing: 0) {
-                            HStack(spacing: 8) {
-                                AutocompleteTextField(text: $workingDirectory, placeholder: "~/")
-                                    .focused($focusedField, equals: .directory)
-                                    .onChange(of: workingDirectory) { _, newValue in
-                                        checkForGitRepository(at: newValue)
-                                    }
-
-                                Button(action: selectDirectory) {
-                                    Image(systemName: "folder")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.secondary)
-                                        .frame(width: 20, height: 20)
-                                        .contentShape(Rectangle())
+                        HStack(spacing: 8) {
+                            AutocompleteTextField(text: $workingDirectory, placeholder: "~/")
+                                .focused($focusedField, equals: .directory)
+                                .onChange(of: workingDirectory) { _, newValue in
+                                    checkForGitRepository(at: newValue)
                                 }
-                                .buttonStyle(.borderless)
-                                .help("Choose directory")
+                                .zIndex(1) // Ensure autocomplete appears above other elements
+
+                            Button(action: selectDirectory) {
+                                Image(systemName: "folder")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 20, height: 20)
+                                    .contentShape(Rectangle())
                             }
+                            .buttonStyle(.borderless)
+                            .help("Choose directory")
                         }
                     }
 

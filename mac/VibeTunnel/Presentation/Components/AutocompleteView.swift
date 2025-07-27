@@ -70,8 +70,15 @@ struct AutocompleteViewWithKeyboard: View {
                 }
             }
         }
-        .background(.regularMaterial)
-        .cornerRadius(6)
+        .background(
+            ZStack {
+                // Base opaque layer
+                Color(NSColor.windowBackgroundColor)
+                // Material overlay for visual consistency
+                Color.primary.opacity(0.02)
+            }
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 6))
         .overlay(
             RoundedRectangle(cornerRadius: 6)
                 .stroke(Color.primary.opacity(0.1), lineWidth: 1)
@@ -201,49 +208,64 @@ struct AutocompleteTextField: View {
     @State private var justSelectedCompletion = false
     @State private var keyboardNavigating = false
 
+    @State private var textFieldSize: CGSize = .zero
+    
     var body: some View {
-        VStack(spacing: 4) {
-            TextField(placeholder, text: $text)
-                .textFieldStyle(.roundedBorder)
-                .focused($isFocused)
-                .onKeyPress { keyPress in
-                    handleKeyPress(keyPress)
-                }
-                .onChange(of: text) { _, newValue in
-                    handleTextChange(newValue)
-                }
-                .onChange(of: isFocused) { _, focused in
-                    if !focused {
-                        // Hide suggestions after a delay to allow clicking
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                            showSuggestions = false
-                            selectedIndex = -1
-                        }
-                    } else if focused && !text.isEmpty && !(autocompleteService?.suggestions.isEmpty ?? true) {
-                        // Show suggestions when field gains focus if we have any
-                        showSuggestions = true
+        TextField(placeholder, text: $text)
+            .textFieldStyle(.roundedBorder)
+            .focused($isFocused)
+            .onKeyPress { keyPress in
+                handleKeyPress(keyPress)
+            }
+            .onChange(of: text) { _, newValue in
+                handleTextChange(newValue)
+            }
+            .onChange(of: isFocused) { _, focused in
+                if !focused {
+                    // Hide suggestions after a delay to allow clicking
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        showSuggestions = false
+                        selectedIndex = -1
                     }
+                } else if focused && !text.isEmpty && !(autocompleteService?.suggestions.isEmpty ?? true) {
+                    // Show suggestions when field gains focus if we have any
+                    showSuggestions = true
                 }
-
-            if showSuggestions && isFocused && !(autocompleteService?.suggestions.isEmpty ?? true) {
-                AutocompleteViewWithKeyboard(
+            }
+            .background(
+                GeometryReader { geometry in
+                    Color.clear
+                        .onAppear {
+                            textFieldSize = geometry.size
+                        }
+                        .onChange(of: geometry.size) { _, newSize in
+                            textFieldSize = newSize
+                        }
+                }
+            )
+            .background(
+                AutocompleteWindowView(
                     suggestions: autocompleteService?.suggestions ?? [],
                     selectedIndex: $selectedIndex,
-                    keyboardNavigating: keyboardNavigating
-                ) { suggestion in
-                    justSelectedCompletion = true
-                    text = suggestion
-                    showSuggestions = false
-                    selectedIndex = -1
-                    autocompleteService?.clearSuggestions()
-                }
-                .transition(.asymmetric(
-                    insertion: .opacity.combined(with: .scale(scale: 0.95)).combined(with: .offset(y: -5)),
-                    removal: .opacity.combined(with: .scale(scale: 0.95))
-                ))
-            }
-        }
-        .animation(.easeInOut(duration: 0.15), value: showSuggestions)
+                    keyboardNavigating: keyboardNavigating,
+                    onSelect: { suggestion in
+                        justSelectedCompletion = true
+                        text = suggestion
+                        showSuggestions = false
+                        selectedIndex = -1
+                        autocompleteService?.clearSuggestions()
+                        // Keep focus on the text field
+                        DispatchQueue.main.async {
+                            isFocused = true
+                        }
+                    },
+                    width: textFieldSize.width,
+                    isShowing: Binding(
+                        get: { showSuggestions && isFocused && !(autocompleteService?.suggestions.isEmpty ?? true) },
+                        set: { showSuggestions = $0 }
+                    )
+                )
+            )
         .onAppear {
             // Initialize autocompleteService with GitRepositoryMonitor
             autocompleteService = AutocompleteService(gitMonitor: gitMonitor)
@@ -353,5 +375,51 @@ struct AutocompleteTextField: View {
                 }
             }
         }
+    }
+}
+
+/// Popup content wrapper for autocomplete suggestions
+private struct AutocompletePopupContent: View {
+    let suggestions: [PathSuggestion]
+    @Binding var selectedIndex: Int
+    let keyboardNavigating: Bool
+    let width: CGFloat
+    let onSelect: (String) -> Void
+    
+    var body: some View {
+        AutocompleteViewWithKeyboard(
+            suggestions: suggestions,
+            selectedIndex: $selectedIndex,
+            keyboardNavigating: keyboardNavigating,
+            onSelect: onSelect
+        )
+        .frame(width: width)
+        .frame(maxHeight: 200)
+        .background(
+            VisualEffectBackground()
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+    }
+}
+
+/// Visual effect background for the autocomplete dropdown
+private struct VisualEffectBackground: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let effectView = NSVisualEffectView()
+        effectView.material = .popover
+        effectView.blendingMode = .behindWindow
+        effectView.state = .active
+        effectView.wantsLayer = true
+        effectView.layer?.cornerRadius = 6
+        effectView.layer?.masksToBounds = true
+        return effectView
+    }
+    
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        // No updates needed
     }
 }
