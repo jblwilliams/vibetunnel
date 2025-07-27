@@ -164,7 +164,7 @@ final class SessionMonitor {
             self.lastError = nil
 
             // Notify for sessions that have just ended
-            if firstFetchDone && UserDefaults.standard.bool(forKey: "showNotifications") {
+            if firstFetchDone && ConfigManager.shared.notificationsEnabled {
                 let ended = Self.detectEndedSessions(from: oldSessions, to: sessionsDict)
                 for session in ended {
                     let id = session.id
@@ -286,8 +286,8 @@ final class SessionMonitor {
         async
     {
         // Check if Claude notifications are enabled using ConfigManager
-        let claudeNotificationsEnabled = ConfigManager.shared.notificationClaudeTurn
-        guard claudeNotificationsEnabled else { return }
+        // Must check both master switch and specific preference
+        guard ConfigManager.shared.notificationsEnabled && ConfigManager.shared.notificationClaudeTurn else { return }
 
         for (id, newSession) in new {
             // Only process running sessions

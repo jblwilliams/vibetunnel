@@ -226,7 +226,8 @@ final class ConfigManager {
         self.repositoryBasePath = FilePathConstants.defaultRepositoryBasePath
 
         // Set notification defaults to match TypeScript defaults
-        self.notificationsEnabled = true
+        // Master switch is OFF by default, but individual preferences are set to true
+        self.notificationsEnabled = false  // Changed from true to match web defaults
         self.notificationSessionStart = true
         self.notificationSessionExit = true
         self.notificationCommandCompletion = true
