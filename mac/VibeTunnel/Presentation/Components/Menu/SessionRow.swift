@@ -360,6 +360,7 @@ struct SessionRow: View {
                 // The session monitor will automatically update
             } catch {
                 // Handle error
+                Self.logger.error("Failed to terminate session \(session.key): \(error)")
                 await MainActor.run {
                     isTerminating = false
                 }
