@@ -31,7 +31,7 @@ struct AutocompleteWindowView: NSViewRepresentable {
     }
     
     func makeCoordinator() -> Coordinator {
-        Coordinator(onSelect: onSelect, isShowing: $isShowing)
+        Coordinator(onSelect: onSelect, isShowing: $isShowing, selectedIndex: $selectedIndex)
     }
     
     @MainActor
@@ -40,11 +40,13 @@ struct AutocompleteWindowView: NSViewRepresentable {
         private var hostingView: NSHostingView<AnyView>?
         private let onSelect: (String) -> Void
         @Binding var isShowing: Bool
+        @Binding var selectedIndex: Int
         nonisolated(unsafe) private var clickMonitor: Any?
         
-        init(onSelect: @escaping (String) -> Void, isShowing: Binding<Bool>) {
+        init(onSelect: @escaping (String) -> Void, isShowing: Binding<Bool>, selectedIndex: Binding<Int>) {
             self.onSelect = onSelect
             self._isShowing = isShowing
+            self._selectedIndex = selectedIndex
             super.init()
         }
         
@@ -99,11 +101,11 @@ struct AutocompleteWindowView: NSViewRepresentable {
             guard let window = dropdownWindow,
                   let hostingView = hostingView else { return }
             
-            // Update content
+            // Update content with proper binding
             let content = VStack(spacing: 0) {
                 AutocompleteViewWithKeyboard(
                     suggestions: suggestions,
-                    selectedIndex: .constant(selectedIndex),
+                    selectedIndex: $selectedIndex,
                     keyboardNavigating: keyboardNavigating
                 ) { [weak self] suggestion in
                     self?.onSelect(suggestion)
