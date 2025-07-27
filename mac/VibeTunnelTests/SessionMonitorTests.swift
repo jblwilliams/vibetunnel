@@ -44,7 +44,8 @@ final class SessionMonitorTests {
             source: nil,
             remoteId: nil,
             remoteName: nil,
-            remoteUrl: nil
+            remoteUrl: nil,
+            attachedViaVT: nil
         )
         let exited = ServerSessionInfo(
             id: "one",
@@ -72,7 +73,8 @@ final class SessionMonitorTests {
             source: nil,
             remoteId: nil,
             remoteName: nil,
-            remoteUrl: nil
+            remoteUrl: nil,
+            attachedViaVT: nil
         )
         let oldMap = ["one": running]
         let newMap = ["one": exited]

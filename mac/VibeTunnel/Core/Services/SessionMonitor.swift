@@ -169,7 +169,7 @@ final class SessionMonitor {
                 for session in ended {
                     let id = session.id
                     let title = "Session Completed"
-                    let displayName = session.name ?? session.command.joined(separator: " ")
+                    let displayName = session.name
                     let content = UNMutableNotificationContent()
                     content.title = title
                     content.body = displayName
