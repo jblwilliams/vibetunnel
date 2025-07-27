@@ -230,9 +230,9 @@ private struct ServerStatusSection: View {
                             Text(isServerRunning ? "Running" : "Stopped")
                                 .foregroundStyle(isServerRunning ? .primary : .secondary)
                         }
-                        
+
                         Spacer()
-                        
+
                         if serverStatus == .stopped {
                             Button("Start") {
                                 Task {

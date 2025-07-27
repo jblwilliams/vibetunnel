@@ -10,7 +10,7 @@ struct QuickStartSettingsSection: View {
     @State private var editingCommandText = ""
     @FocusState private var focusedField: Field?
     @FocusState private var isTableFocused: Bool
-    
+
     private enum Field: Hashable {
         case name
         case command
@@ -44,7 +44,7 @@ struct QuickStartSettingsSection: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .width(min: 100, ideal: 150, max: 200)
-                    
+
                     TableColumn("Command") { command in
                         Group {
                             if editingCommand?.id == command.id {
@@ -82,9 +82,10 @@ struct QuickStartSettingsSection: View {
                     if editingCommand != nil {
                         return .ignored
                     }
-                    
+
                     if let selectedId = selection.first,
-                       let command = configManager.quickStartCommands.first(where: { $0.id == selectedId }) {
+                       let command = configManager.quickStartCommands.first(where: { $0.id == selectedId })
+                    {
                         startEditing(command)
                         return .handled
                     }
@@ -102,7 +103,7 @@ struct QuickStartSettingsSection: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.accessoryBar)
-                        
+
                         Button(action: deleteSelected) {
                             Image(systemName: "minus")
                                 .font(.system(size: 11))
@@ -138,66 +139,66 @@ struct QuickStartSettingsSection: View {
         // Use displayName to handle cases where name is nil
         editingName = command.name ?? command.command
         editingCommandText = command.command
-        
+
         // Focus the name field after a brief delay to ensure the TextField is rendered
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             focusedField = .name
         }
     }
-    
+
     private func saveEdit() {
         guard let command = editingCommand else { return }
-        
+
         let trimmedName = editingName.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedCommand = editingCommandText.trimmingCharacters(in: .whitespacesAndNewlines)
-        
+
         if !trimmedCommand.isEmpty {
             // If name equals command, save as nil (no custom name needed)
             let finalName = (trimmedName.isEmpty || trimmedName == trimmedCommand) ? nil : trimmedName
-            
+
             configManager.updateCommand(
                 id: command.id,
                 name: finalName,
                 command: trimmedCommand
             )
         }
-        
+
         editingCommand = nil
         editingName = ""
         editingCommandText = ""
         focusedField = nil
-        
+
         // Restore focus to table after editing
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             isTableFocused = true
         }
     }
-    
+
     private func cancelEdit() {
         editingCommand = nil
         editingName = ""
         editingCommandText = ""
         focusedField = nil
-        
+
         // Restore focus to table after canceling
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             isTableFocused = true
         }
     }
-    
+
     private func addCommand() {
         let newCommand = QuickStartCommand(
             name: nil,
             command: "new-command"
         )
         configManager.addCommand(name: newCommand.name, command: newCommand.command)
-        
+
         // Start editing the new command immediately
         if let addedCommand = configManager.quickStartCommands.last {
             startEditing(addedCommand)
         }
     }
-    
+
     private func deleteSelected() {
         for id in selection {
             configManager.deleteCommand(id: id)
