@@ -363,4 +363,19 @@ struct ServerEvent: Codable, Identifiable, Equatable {
         formatter.timeStyle = .medium
         return formatter.string(from: timestamp)
     }
+    
+    // MARK: - Codable
+    
+    /// Coding keys to exclude `id` from encoding/decoding since it's auto-generated
+    enum CodingKeys: String, CodingKey {
+        case type
+        case sessionId
+        case sessionName
+        case command
+        case exitCode
+        case duration
+        case processInfo
+        case message
+        case timestamp
+    }
 } 

@@ -25,8 +25,7 @@ struct PathSplittingTests {
         let fileManager = FileManager.default
         let exists = fileManager.fileExists(atPath: nonExistentPath)
 
-        // URL is still created even for non-existent paths
-        #expect(url != nil)
+        // URL is always created for any path (even non-existent ones)
         #expect(url.path == nonExistentPath)
         #expect(!exists)
     }
