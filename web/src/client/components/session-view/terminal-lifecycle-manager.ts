@@ -181,6 +181,14 @@ export class TerminalLifecycleManager {
     // Update terminal dimensions for display
     const { cols, rows, isMobile, isHeightOnlyChange, source } = customEvent.detail;
 
+    // Debug logging for terminal resize events
+    logger.debug('Terminal resize event:', {
+      cols,
+      rows,
+      source,
+      sessionId: this.session?.id,
+    });
+
     // Notify the session view to update its state
     if (this.stateCallbacks) {
       this.stateCallbacks.updateTerminalDimensions(cols, rows);

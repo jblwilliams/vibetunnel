@@ -1196,7 +1196,8 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
       return res.status(400).json({ error: 'Cols and rows must be between 1 and 1000' });
     }
 
-    logger.log(chalk.blue(`resizing session ${sessionId} to ${cols}x${rows}`));
+    // Log resize requests at debug level
+    logger.debug(`Resizing session ${sessionId} to ${cols}x${rows}`);
 
     try {
       // If in HQ mode, check if this is a remote session
