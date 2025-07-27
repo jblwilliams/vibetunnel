@@ -374,6 +374,20 @@ export class PtyManager extends EventEmitter {
         this.createEnvVars(term)
       );
 
+      // Set up pruning detection callback for precise offset tracking
+      asciinemaWriter.onPruningSequence(async ({ sequence, position }) => {
+        const sessionInfo = this.sessionManager.loadSessionInfo(sessionId);
+        if (sessionInfo) {
+          sessionInfo.lastClearOffset = position;
+          await this.sessionManager.saveSessionInfo(sessionId, sessionInfo);
+
+          logger.debug(
+            `Updated lastClearOffset for session ${sessionId} to exact position ${position} ` +
+              `after detecting pruning sequence '${sequence.split('\x1b').join('\\x1b')}'`
+          );
+        }
+      });
+
       // Create PTY process
       let ptyProcess: IPty;
       try {
@@ -724,78 +738,8 @@ export class PtyManager extends EventEmitter {
       }
 
       // Write to asciinema file (it has its own internal queue)
+      // The AsciinemaWriter now handles pruning detection internally with precise byte tracking
       asciinemaWriter?.writeOutput(Buffer.from(processedData, 'utf8'));
-
-      // Check for pruning sequences in the data and update lastClearOffset
-      // Comprehensive list of ANSI sequences that warrant pruning
-      const PRUNE_SEQUENCES = [
-        '\x1b[3J', // Clear scrollback buffer (xterm)
-        '\x1bc', // RIS - Full terminal reset
-        '\x1b[2J', // Clear screen (common)
-        '\x1b[H\x1b[J', // Home cursor + clear (older pattern)
-        '\x1b[H\x1b[2J', // Home cursor + clear screen variant
-        '\x1b[?1049h', // Enter alternate screen (vim, less, etc)
-        '\x1b[?1049l', // Exit alternate screen
-        '\x1b[?47h', // Save screen and enter alternate screen (older)
-        '\x1b[?47l', // Restore screen and exit alternate screen (older)
-      ];
-
-      // Track if we found any pruning sequences and their positions
-      let lastPruneIndex = -1;
-      let lastPruneSequence = '';
-
-      // Check for each pruning sequence
-      for (const sequence of PRUNE_SEQUENCES) {
-        const index = processedData.lastIndexOf(sequence);
-        if (index !== -1 && index > lastPruneIndex) {
-          lastPruneIndex = index;
-          lastPruneSequence = sequence;
-        }
-      }
-
-      // If we found a pruning sequence, calculate precise offset
-      if (lastPruneIndex !== -1 && asciinemaWriter) {
-        // We need to calculate the exact byte position in the asciinema file
-        // The challenge is that the data has already been written, but we need
-        // to track where in the file the prune point is
-
-        // For now, we'll use the imprecise method but log a warning
-        // The proper fix requires tracking byte positions through AsciinemaWriter
-        logger.warn(
-          `Found pruning sequence '${lastPruneSequence.split('\x1b').join('\\x1b')}' at position ${lastPruneIndex} in session ${session.id}. ` +
-            `Using imprecise offset tracking - this will be fixed when AsciinemaWriter exposes byte positions.`
-        );
-
-        // Schedule update after write completes
-        setTimeout(async () => {
-          try {
-            const sessionPaths = this.sessionManager.getSessionPaths(session.id);
-            if (!sessionPaths) {
-              logger.error(`Failed to get session paths for session ${session.id}`);
-              return;
-            }
-
-            const stats = await fs.promises.stat(sessionPaths.stdoutPath);
-            const currentFileSize = stats.size;
-
-            const sessionInfo = this.sessionManager.loadSessionInfo(session.id);
-            if (!sessionInfo) {
-              logger.error(`Failed to get session info for session ${session.id}`);
-              return;
-            }
-
-            // Update with current file size (imprecise but better than nothing)
-            sessionInfo.lastClearOffset = currentFileSize;
-            await this.sessionManager.saveSessionInfo(session.id, sessionInfo);
-
-            logger.debug(
-              `Updated lastClearOffset for session ${session.id} to ${currentFileSize} after detecting pruning sequence '${lastPruneSequence.split('\x1b').join('\\x1b')}'`
-            );
-          } catch (error) {
-            logger.error(`Failed to update lastClearOffset for session ${session.id}:`, error);
-          }
-        }, 100);
-      }
 
       // Forward to stdout if requested (using queue for ordering)
       if (forwardToStdout && stdoutQueue) {

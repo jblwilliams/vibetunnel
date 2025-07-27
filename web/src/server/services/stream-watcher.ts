@@ -4,27 +4,17 @@ import * as fs from 'fs';
 import type { SessionManager } from '../pty/session-manager.js';
 import type { AsciinemaHeader } from '../pty/types.js';
 import { createLogger } from '../utils/logger.js';
+import {
+  calculatePruningPositionInFile,
+  containsPruningSequence,
+  findLastPrunePoint,
+  logPruningDetection,
+} from '../utils/pruning-detector.js';
 
 const logger = createLogger('stream-watcher');
 
 // Constants
 const HEADER_READ_BUFFER_SIZE = 4096;
-
-// Comprehensive list of ANSI sequences that warrant pruning
-const PRUNE_SEQUENCES = [
-  '\x1b[3J', // Clear scrollback buffer (xterm)
-  '\x1bc', // RIS - Full terminal reset
-  '\x1b[2J', // Clear screen (common)
-  '\x1b[H\x1b[J', // Home cursor + clear (older pattern)
-  '\x1b[H\x1b[2J', // Home cursor + clear screen variant
-  '\x1b[?1049h', // Enter alternate screen (vim, less, etc)
-  '\x1b[?1049l', // Exit alternate screen
-  '\x1b[?47h', // Save screen and enter alternate screen (older)
-  '\x1b[?47l', // Restore screen and exit alternate screen (older)
-];
-
-// Keep the old constant for compatibility
-const _CLEAR_SEQUENCE = '\x1b[3J';
 
 interface StreamClient {
   response: Response;
@@ -59,44 +49,6 @@ function isExitEvent(event: AsciinemaEvent): event is AsciinemaExitEvent {
   return Array.isArray(event) && event[0] === 'exit';
 }
 
-/**
- * Checks if an output event contains any pruning sequence
- * @param event - The asciinema event to check
- * @returns true if the event contains a pruning sequence
- */
-function containsClearSequence(event: AsciinemaEvent): boolean {
-  if (!isOutputEvent(event)) return false;
-
-  const data = event[2];
-  // Check if data contains any of the pruning sequences
-  return PRUNE_SEQUENCES.some((sequence) => data.includes(sequence));
-}
-
-/**
- * Finds the last pruning sequence in the data and its position
- * @param data - The output data to search
- * @returns Object with the sequence and its position, or null if not found
- */
-function findLastPrunePoint(data: string): { sequence: string; position: number } | null {
-  let lastPosition = -1;
-  let lastSequence = '';
-
-  for (const sequence of PRUNE_SEQUENCES) {
-    const pos = data.lastIndexOf(sequence);
-    if (pos > lastPosition) {
-      lastPosition = pos;
-      lastSequence = sequence;
-    }
-  }
-
-  if (lastPosition === -1) return null;
-
-  return {
-    sequence: lastSequence,
-    position: lastPosition + lastSequence.length,
-  };
-}
-
 interface WatcherInfo {
   clients: Set<StreamClient>;
   watcher?: fs.FSWatcher;
@@ -126,7 +78,8 @@ export class StreamWatcher {
     event: AsciinemaOutputEvent,
     eventIndex: number,
     fileOffset: number,
-    currentResize: AsciinemaResizeEvent | null
+    currentResize: AsciinemaResizeEvent | null,
+    eventLine: string
   ): {
     lastClearIndex: number;
     lastClearOffset: number;
@@ -135,13 +88,19 @@ export class StreamWatcher {
     const prunePoint = findLastPrunePoint(event[2]);
     if (!prunePoint) return null;
 
-    // Calculate precise offset: current position minus unused data after prune point
-    const unusedBytes = Buffer.byteLength(event[2].substring(prunePoint.position), 'utf8');
-    const lastClearOffset = fileOffset - unusedBytes;
+    // Calculate precise offset using shared utility
+    const lastClearOffset = calculatePruningPositionInFile(
+      fileOffset,
+      eventLine,
+      prunePoint.position
+    );
+
+    // Use shared logging function
+    logPruningDetection(prunePoint.sequence, lastClearOffset, '(retroactive scan)');
 
     logger.debug(
-      `found pruning sequence '${prunePoint.sequence.split('\x1b').join('\\x1b')}' at event index ${eventIndex}, ` +
-        `offset: ${lastClearOffset}, current resize: ${currentResize ? currentResize[2] : 'none'}`
+      `found at event index ${eventIndex}, ` +
+        `current resize: ${currentResize ? currentResize[2] : 'none'}`
     );
 
     return {
@@ -414,12 +373,13 @@ export class StreamWatcher {
                   }
 
                   // Check for clear sequence in output events
-                  if (containsClearSequence(event)) {
+                  if (isOutputEvent(event) && containsPruningSequence(event[2])) {
                     const clearResult = this.processClearSequence(
                       event as AsciinemaOutputEvent,
                       events.length,
                       fileOffset,
-                      currentResize
+                      currentResize,
+                      line
                     );
                     if (clearResult) {
                       lastClearIndex = clearResult.lastClearIndex;
@@ -454,12 +414,13 @@ export class StreamWatcher {
                 if (isResizeEvent(event)) {
                   currentResize = event;
                 }
-                if (containsClearSequence(event)) {
+                if (isOutputEvent(event) && containsPruningSequence(event[2])) {
                   const clearResult = this.processClearSequence(
                     event as AsciinemaOutputEvent,
                     events.length,
                     fileOffset,
-                    currentResize
+                    currentResize,
+                    lineBuffer
                   );
                   if (clearResult) {
                     lastClearIndex = clearResult.lastClearIndex;
