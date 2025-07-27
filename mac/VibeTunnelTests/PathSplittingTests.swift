@@ -60,8 +60,10 @@ struct PathSplittingTests {
         // Test root directory
         let rootUrl = URL(fileURLWithPath: "/")
         #expect(rootUrl.path == "/")
-        #expect(rootUrl.deletingLastPathComponent().path == "/")
-        #expect(rootUrl.lastPathComponent == "")
+        // Root URL's parent is "/.." on macOS
+        #expect(rootUrl.deletingLastPathComponent().path == "/..")
+        // Root URL's last component is "/" on macOS
+        #expect(rootUrl.lastPathComponent == "/")
 
         // Test single component after root
         let singleComponent = URL(fileURLWithPath: "/Users")

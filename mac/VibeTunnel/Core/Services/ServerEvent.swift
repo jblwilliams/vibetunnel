@@ -331,7 +331,8 @@ struct ServerEvent: Codable, Identifiable, Equatable {
     /// The duration is formatted based on its length:
     /// - Less than 1 second: Shows milliseconds (e.g., "500ms")
     /// - Less than 1 minute: Shows seconds with one decimal (e.g., "2.5s")
-    /// - 1 minute or more: Shows minutes and seconds (e.g., "2m 5s")
+    /// - Less than 1 hour: Shows minutes and seconds (e.g., "2m 5s")
+    /// - 1 hour or more: Shows hours, minutes and seconds (e.g., "1h 2m 5s")
     ///
     /// - Returns: A formatted duration string, or `nil` if no duration is set.
     var formattedDuration: String? {
@@ -341,10 +342,15 @@ struct ServerEvent: Codable, Identifiable, Equatable {
             return "\(duration)ms"
         } else if duration < 60000 {
             return String(format: "%.1fs", Double(duration) / 1000.0)
-        } else {
+        } else if duration < 3600000 {
             let minutes = duration / 60000
             let seconds = (duration % 60000) / 1000
             return "\(minutes)m \(seconds)s"
+        } else {
+            let hours = duration / 3600000
+            let minutes = (duration % 3600000) / 60000
+            let seconds = (duration % 60000) / 1000
+            return "\(hours)h \(minutes)m \(seconds)s"
         }
     }
     
