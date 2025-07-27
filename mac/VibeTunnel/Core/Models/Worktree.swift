@@ -188,10 +188,10 @@ struct FollowModeStatus: Codable {
 struct CreateWorktreeRequest: Codable {
     /// The repository path where the worktree will be created.
     let repoPath: String
-    
+
     /// The branch name for the new worktree.
     let branch: String
-    
+
     /// The file system path where the worktree will be created.
     let path: String
 
@@ -208,7 +208,7 @@ struct CreateWorktreeRequest: Codable {
 struct SwitchBranchRequest: Codable {
     /// The repository path where the branch switch will occur.
     let repoPath: String
-    
+
     /// The branch to switch to.
     let branch: String
 }
@@ -227,12 +227,12 @@ struct SwitchBranchRequest: Codable {
 struct FollowModeRequest: Codable {
     /// The repository path where follow mode will be configured.
     let repoPath: String
-    
+
     /// The branch to follow when enabling.
     ///
     /// Required when `enable` is true, ignored otherwise.
     let branch: String?
-    
+
     /// Whether to enable or disable follow mode.
     let enable: Bool
 }

@@ -214,12 +214,12 @@ struct NewSessionForm: View {
                                     .replacingOccurrences(of: "/", with: "-")
                                     .replacingOccurrences(of: " ", with: "-")
                                     .lowercased()
-                                
+
                                 // Create worktree path in a 'worktrees' subdirectory
                                 let repoURL = URL(fileURLWithPath: repoPath)
                                 let worktreesDir = repoURL.appendingPathComponent("worktrees")
                                 let worktreePath = worktreesDir.appendingPathComponent(slugifiedBranch).path
-                                
+
                                 // Create the worktree
                                 try await service.createWorktree(
                                     gitRepoPath: repoPath,

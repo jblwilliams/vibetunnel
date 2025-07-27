@@ -21,24 +21,24 @@ struct NotificationServiceTests {
         #expect(preferences.soundEnabled == configManager.notificationSoundEnabled)
         #expect(preferences.vibrationEnabled == configManager.notificationVibrationEnabled)
     }
-    
+
     @Test("Default notification values match expected defaults")
     @MainActor
     func verifyDefaultValues() {
         // This test documents what the default values SHOULD be
         // In production, these would be set when no config file exists
-        
+
         // Expected defaults based on TypeScript config:
         // - Master switch (notificationsEnabled) should be false
         // - Individual preferences should be true (except claudeTurn)
         // - Sound and vibration should be enabled
-        
+
         // Note: In actual tests, ConfigManager loads from ~/.vibetunnel/config.json
         // To test true defaults, we would need to:
         // 1. Mock ConfigManager
         // 2. Clear the config file
         // 3. Force ConfigManager to use defaults
-        
+
         // For now, we document the expected behavior
         let expectedMasterSwitch = false
         let expectedSessionStart = true
@@ -49,7 +49,7 @@ struct NotificationServiceTests {
         let expectedClaudeTurn = false
         let expectedSound = true
         let expectedVibration = true
-        
+
         // These are the values that SHOULD be used when no config exists
         #expect(expectedMasterSwitch == false, "Master switch should be OFF by default")
         #expect(expectedSessionStart == true, "Session start should be enabled by default")
@@ -89,7 +89,7 @@ struct NotificationServiceTests {
 
         // Enable notifications master switch
         configManager.updateNotificationPreferences(enabled: true)
-        
+
         // Enable session start notifications
         var preferences = NotificationService.NotificationPreferences(fromConfig: configManager)
         preferences.sessionStart = true
@@ -113,7 +113,7 @@ struct NotificationServiceTests {
 
         // Enable notifications master switch
         configManager.updateNotificationPreferences(enabled: true)
-        
+
         // Enable session exit notifications
         var preferences = NotificationService.NotificationPreferences(fromConfig: configManager)
         preferences.sessionExit = true
@@ -137,7 +137,7 @@ struct NotificationServiceTests {
 
         // Enable notifications master switch
         configManager.updateNotificationPreferences(enabled: true)
-        
+
         // Enable command completion notifications
         var preferences = NotificationService.NotificationPreferences(fromConfig: configManager)
         preferences.commandCompletion = true
@@ -167,7 +167,7 @@ struct NotificationServiceTests {
 
         // Enable notifications master switch
         configManager.updateNotificationPreferences(enabled: true)
-        
+
         // Enable command error notifications
         var preferences = NotificationService.NotificationPreferences(fromConfig: configManager)
         preferences.commandError = true
@@ -193,7 +193,7 @@ struct NotificationServiceTests {
 
         // Enable notifications master switch
         configManager.updateNotificationPreferences(enabled: true)
-        
+
         // Enable bell notifications
         var preferences = NotificationService.NotificationPreferences(fromConfig: configManager)
         preferences.bell = true
@@ -215,7 +215,7 @@ struct NotificationServiceTests {
 
         // Test 1: Master switch disabled (default)
         configManager.updateNotificationPreferences(enabled: false)
-        
+
         // Even with individual preferences enabled, nothing should fire
         var preferences = NotificationService.NotificationPreferences(fromConfig: configManager)
         preferences.sessionStart = true
@@ -236,21 +236,21 @@ struct NotificationServiceTests {
 
         // Master switch should block all notifications
         #expect(configManager.notificationsEnabled == false)
-        
+
         // Test 2: Master switch enabled but individual preferences disabled
         configManager.updateNotificationPreferences(enabled: true)
-        
+
         preferences.sessionStart = false
         preferences.sessionExit = false
         preferences.commandCompletion = false
         preferences.commandError = false
         preferences.bell = false
         service.updatePreferences(preferences)
-        
+
         // Try to send notifications again
         await service.sendSessionStartNotification(sessionName: "Test")
         await service.sendSessionExitNotification(sessionName: "Test", exitCode: 0)
-        
+
         // Individual preferences should block notifications
         #expect(preferences.sessionStart == false)
         #expect(preferences.sessionExit == false)
@@ -266,7 +266,7 @@ struct NotificationServiceTests {
 
         // Enable notifications
         configManager.updateNotificationPreferences(enabled: true)
-        
+
         var preferences = NotificationService.NotificationPreferences(fromConfig: configManager)
         preferences.sessionExit = true
         service.updatePreferences(preferences)

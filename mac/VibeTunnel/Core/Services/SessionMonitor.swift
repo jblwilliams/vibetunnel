@@ -212,7 +212,12 @@ final class SessionMonitor {
     }
 
     /// Pre-cache Git repositories for sessions, deduplicating by repository root
-    private func preCacheGitRepositories(for sessions: [ServerSessionInfo], using gitMonitor: GitRepositoryMonitor) async {
+    private func preCacheGitRepositories(
+        for sessions: [ServerSessionInfo],
+        using gitMonitor: GitRepositoryMonitor
+    )
+        async
+    {
         // Track unique directories we need to check
         var uniqueDirectoriesToCheck = Set<String>()
 
@@ -316,7 +321,7 @@ final class SessionMonitor {
             if previousActive && !currentActive && !alreadyNotified {
                 logger.info("🔔 Detected Claude transition to idle for session: \(id)")
                 let sessionName = newSession.name
-                
+
                 // Create a claude-turn event for the notification
                 let claudeTurnEvent = ServerEvent.claudeTurn(
                     sessionId: id,

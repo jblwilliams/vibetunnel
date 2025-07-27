@@ -69,9 +69,9 @@ final class NotificationControlHandler {
         logger.info("Received notification: \(title) - \(body) (type: \(typeString ?? "unknown"))")
 
         // Map type string to ServerEventType and create ServerEvent
-        if let typeString = typeString,
-           let eventType = ServerEventType(rawValue: typeString) {
-            
+        if let typeString,
+           let eventType = ServerEventType(rawValue: typeString)
+        {
             let serverEvent = ServerEvent(
                 type: eventType,
                 sessionId: sessionId,
@@ -81,7 +81,7 @@ final class NotificationControlHandler {
                 duration: duration,
                 message: body
             )
-            
+
             // Use the consolidated notification method
             await notificationService.sendNotification(for: serverEvent)
         } else {

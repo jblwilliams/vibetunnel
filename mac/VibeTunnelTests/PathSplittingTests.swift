@@ -85,8 +85,11 @@ struct PathSplittingTests {
 
         // List contents of parent directory
         let fileManager = FileManager.default
-        let contents = try #require(try? fileManager.contentsOfDirectory(at: parentURL, includingPropertiesForKeys: nil))
-        
+        let contents = try #require(try? fileManager.contentsOfDirectory(
+            at: parentURL,
+            includingPropertiesForKeys: nil
+        ))
+
         let matching = contents.filter { $0.lastPathComponent.hasPrefix(prefix) }
         // We can't assert specific matches as they depend on the user's home directory
         // But we can verify the filtering logic works

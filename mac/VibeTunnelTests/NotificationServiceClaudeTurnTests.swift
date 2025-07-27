@@ -57,7 +57,7 @@ struct NotificationServiceClaudeTurnTests {
     func claudeTurnInPreferences() async throws {
         // Given
         let configManager = ConfigManager.shared
-        
+
         // When - set the preference through ConfigManager
         configManager.notificationClaudeTurn = true
 

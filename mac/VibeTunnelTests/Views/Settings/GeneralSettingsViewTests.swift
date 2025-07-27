@@ -31,7 +31,7 @@ struct GeneralSettingsViewTests {
         #expect(prefs.commandError == true)
         #expect(prefs.bell == true)
         #expect(prefs.claudeTurn == false)
-        
+
         // Verify ConfigManager properties directly
         #expect(configManager.notificationSessionStart == true)
         #expect(configManager.notificationSessionExit == true)
@@ -44,19 +44,19 @@ struct GeneralSettingsViewTests {
     @Test("Notification checkbox toggle updates preferences")
     func notificationCheckboxToggle() {
         let configManager = ConfigManager.shared
-        
+
         // Set initial value through ConfigManager
         configManager.notificationSessionStart = false
-        
+
         // Verify initial state
         #expect(configManager.notificationSessionStart == false)
-        
+
         // Simulate toggle
         configManager.notificationSessionStart = true
-        
+
         // Verify the value was updated
         #expect(configManager.notificationSessionStart == true)
-        
+
         // Test that NotificationService reads the updated preferences
         let prefs = NotificationService.NotificationPreferences(fromConfig: configManager)
         #expect(prefs.sessionStart == true)
@@ -66,7 +66,7 @@ struct GeneralSettingsViewTests {
     func notificationPreferencesSave() {
         // Test that ConfigManager properties work correctly
         let configManager = ConfigManager.shared
-        
+
         // Update values through ConfigManager
         configManager.notificationSessionStart = false
         configManager.notificationSessionExit = false
@@ -80,7 +80,7 @@ struct GeneralSettingsViewTests {
         #expect(configManager.notificationCommandCompletion == true)
         #expect(configManager.notificationCommandError == true)
         #expect(configManager.notificationBell == false)
-        
+
         // Verify that NotificationPreferences reads the updated values
         let prefs = NotificationService.NotificationPreferences(fromConfig: configManager)
         #expect(prefs.sessionStart == false)

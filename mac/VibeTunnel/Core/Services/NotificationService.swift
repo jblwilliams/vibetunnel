@@ -141,7 +141,7 @@ final class NotificationService: NSObject {
     func sendNotification(for event: ServerEvent) async {
         // Check master switch first
         guard configManager.notificationsEnabled else { return }
-        
+
         // Check preferences based on event type
         switch event.type {
         case .sessionStart:
@@ -160,9 +160,9 @@ final class NotificationService: NSObject {
             // Connected events don't trigger notifications
             return
         }
-        
+
         let content = UNMutableNotificationContent()
-        
+
         // Configure notification based on event type
         switch event.type {
         case .sessionStart:
@@ -170,7 +170,7 @@ final class NotificationService: NSObject {
             content.body = event.displayName
             content.categoryIdentifier = "SESSION"
             content.interruptionLevel = .passive
-            
+
         case .sessionExit:
             content.title = "Session Ended"
             content.body = event.displayName
@@ -178,7 +178,7 @@ final class NotificationService: NSObject {
             if let exitCode = event.exitCode, exitCode != 0 {
                 content.subtitle = "Exit code: \(exitCode)"
             }
-            
+
         case .commandFinished:
             content.title = "Your Turn"
             content.body = event.command ?? event.displayName
@@ -187,7 +187,7 @@ final class NotificationService: NSObject {
             if let duration = event.duration, duration > 0, let formattedDuration = event.formattedDuration {
                 content.subtitle = formattedDuration
             }
-            
+
         case .commandError:
             content.title = "Command Failed"
             content.body = event.command ?? event.displayName
@@ -195,7 +195,7 @@ final class NotificationService: NSObject {
             if let exitCode = event.exitCode {
                 content.subtitle = "Exit code: \(exitCode)"
             }
-            
+
         case .bell:
             content.title = "Terminal Bell"
             content.body = event.displayName
@@ -203,29 +203,29 @@ final class NotificationService: NSObject {
             if let message = event.message {
                 content.subtitle = message
             }
-            
+
         case .claudeTurn:
             content.title = event.type.description
             content.body = event.message ?? "Claude has finished responding"
             content.subtitle = event.displayName
             content.categoryIdentifier = "CLAUDE_TURN"
             content.interruptionLevel = .active
-            
+
         case .connected:
             return // Already handled above
         }
-        
+
         // Set sound based on event type
         content.sound = event.type == .commandError ? getNotificationSound(critical: true) : getNotificationSound()
-        
+
         // Add session ID to user info if available
         if let sessionId = event.sessionId {
             content.userInfo = ["sessionId": sessionId, "type": event.type.rawValue]
         }
-        
+
         // Generate identifier
         let identifier = "\(event.type.rawValue)-\(event.sessionId ?? UUID().uuidString)"
-        
+
         // Deliver notification with appropriate method
         if event.type == .sessionStart {
             deliverNotificationWithAutoDismiss(content, identifier: identifier, dismissAfter: 5.0)
@@ -278,7 +278,7 @@ final class NotificationService: NSObject {
 
         // Format duration if provided
         if duration > 0 {
-            let seconds = duration / 1000
+            let seconds = duration / 1_000
             if seconds < 60 {
                 content.subtitle = "\(seconds)s"
             } else {
@@ -294,7 +294,7 @@ final class NotificationService: NSObject {
     /// Send a generic notification
     func sendGenericNotification(title: String, body: String) async {
         guard configManager.notificationsEnabled else { return }
-        
+
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
@@ -438,7 +438,7 @@ final class NotificationService: NSObject {
 
         eventSource?.onError = { [weak self] error in
             Task { @MainActor in
-                if let error = error {
+                if let error {
                     self?.logger.error("❌ EventSource error: \(error)")
                 }
                 self?.isConnected = false
@@ -526,7 +526,7 @@ final class NotificationService: NSObject {
                 }
             case "connected":
                 logger.info("🔗 Received connected event from server")
-                // No notification for connected events
+            // No notification for connected events
             default:
                 logger.warning("Unknown event type: \(type)")
             }
@@ -614,7 +614,7 @@ final class NotificationService: NSObject {
 
         // Format duration if provided
         if duration > 0 {
-            let seconds = duration / 1000
+            let seconds = duration / 1_000
             if seconds < 60 {
                 content.subtitle = "\(seconds)s"
             } else {
@@ -698,7 +698,7 @@ final class NotificationService: NSObject {
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: nil)
 
         UNUserNotificationCenter.current().add(request) { [weak self] error in
-            if let error = error {
+            if let error {
                 self?.logger.error("Failed to deliver notification: \(error)")
             } else {
                 self?.logger.debug("Notification delivered: \(identifier)")
