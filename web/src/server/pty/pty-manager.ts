@@ -726,61 +726,75 @@ export class PtyManager extends EventEmitter {
       // Write to asciinema file (it has its own internal queue)
       asciinemaWriter?.writeOutput(Buffer.from(processedData, 'utf8'));
 
-      // Check for clear sequences in the data and update lastClearOffset
-      const CLEAR_SEQUENCE = '\x1b[3J';
-      if (processedData.includes(CLEAR_SEQUENCE) && asciinemaWriter) {
-        // Find all occurrences of clear sequences
-        let searchIndex = 0;
-        const clearPositions: number[] = [];
+      // Check for pruning sequences in the data and update lastClearOffset
+      // Comprehensive list of ANSI sequences that warrant pruning
+      const PRUNE_SEQUENCES = [
+        '\x1b[3J', // Clear scrollback buffer (xterm)
+        '\x1bc', // RIS - Full terminal reset
+        '\x1b[2J', // Clear screen (common)
+        '\x1b[H\x1b[J', // Home cursor + clear (older pattern)
+        '\x1b[H\x1b[2J', // Home cursor + clear screen variant
+        '\x1b[?1049h', // Enter alternate screen (vim, less, etc)
+        '\x1b[?1049l', // Exit alternate screen
+        '\x1b[?47h', // Save screen and enter alternate screen (older)
+        '\x1b[?47l', // Restore screen and exit alternate screen (older)
+      ];
 
-        while (searchIndex < processedData.length) {
-          const clearIndex = processedData.indexOf(CLEAR_SEQUENCE, searchIndex);
-          if (clearIndex === -1) break;
+      // Track if we found any pruning sequences and their positions
+      let lastPruneIndex = -1;
+      let lastPruneSequence = '';
 
-          clearPositions.push(clearIndex);
-          searchIndex = clearIndex + CLEAR_SEQUENCE.length;
+      // Check for each pruning sequence
+      for (const sequence of PRUNE_SEQUENCES) {
+        const index = processedData.lastIndexOf(sequence);
+        if (index !== -1 && index > lastPruneIndex) {
+          lastPruneIndex = index;
+          lastPruneSequence = sequence;
         }
+      }
 
-        // If we found clear sequences, schedule an update after a short delay
-        // This ensures the asciinema writer has flushed the data to disk
-        if (clearPositions.length > 0) {
-          // Use a short timeout to ensure the write has completed
-          setTimeout(async () => {
-            try {
-              // Get the session paths
-              const sessionPaths = this.sessionManager.getSessionPaths(session.id);
-              if (!sessionPaths) {
-                logger.error(`Failed to get session paths for session ${session.id}`);
-                return;
-              }
+      // If we found a pruning sequence, calculate precise offset
+      if (lastPruneIndex !== -1 && asciinemaWriter) {
+        // We need to calculate the exact byte position in the asciinema file
+        // The challenge is that the data has already been written, but we need
+        // to track where in the file the prune point is
 
-              // Get the current file size (which is the position after the write)
-              const stats = await fs.promises.stat(sessionPaths.stdoutPath);
-              const currentFileSize = stats.size;
+        // For now, we'll use the imprecise method but log a warning
+        // The proper fix requires tracking byte positions through AsciinemaWriter
+        logger.warn(
+          `Found pruning sequence '${lastPruneSequence.split('\x1b').join('\\x1b')}' at position ${lastPruneIndex} in session ${session.id}. ` +
+            `Using imprecise offset tracking - this will be fixed when AsciinemaWriter exposes byte positions.`
+        );
 
-              // Get the full session info to update
-              const sessionInfo = this.sessionManager.loadSessionInfo(session.id);
-              if (!sessionInfo) {
-                logger.error(`Failed to get session info for session ${session.id}`);
-                return;
-              }
-
-              // Update lastClearOffset to the current file position
-              // This is approximate but good enough - when replay happens,
-              // stream-watcher will find the exact position of the last clear
-              sessionInfo.lastClearOffset = currentFileSize;
-
-              // Save the updated session info
-              await this.sessionManager.saveSessionInfo(session.id, sessionInfo);
-
-              logger.debug(
-                `Updated lastClearOffset for session ${session.id} to ${currentFileSize} after detecting ${clearPositions.length} clear sequence(s)`
-              );
-            } catch (error) {
-              logger.error(`Failed to update lastClearOffset for session ${session.id}:`, error);
+        // Schedule update after write completes
+        setTimeout(async () => {
+          try {
+            const sessionPaths = this.sessionManager.getSessionPaths(session.id);
+            if (!sessionPaths) {
+              logger.error(`Failed to get session paths for session ${session.id}`);
+              return;
             }
-          }, 100); // 100ms delay to ensure write completes
-        }
+
+            const stats = await fs.promises.stat(sessionPaths.stdoutPath);
+            const currentFileSize = stats.size;
+
+            const sessionInfo = this.sessionManager.loadSessionInfo(session.id);
+            if (!sessionInfo) {
+              logger.error(`Failed to get session info for session ${session.id}`);
+              return;
+            }
+
+            // Update with current file size (imprecise but better than nothing)
+            sessionInfo.lastClearOffset = currentFileSize;
+            await this.sessionManager.saveSessionInfo(session.id, sessionInfo);
+
+            logger.debug(
+              `Updated lastClearOffset for session ${session.id} to ${currentFileSize} after detecting pruning sequence '${lastPruneSequence.split('\x1b').join('\\x1b')}'`
+            );
+          } catch (error) {
+            logger.error(`Failed to update lastClearOffset for session ${session.id}:`, error);
+          }
+        }, 100);
       }
 
       // Forward to stdout if requested (using queue for ordering)
@@ -1378,6 +1392,18 @@ export class PtyManager extends EventEmitter {
     const memorySession = this.sessions.get(sessionId);
     const currentTime = Date.now();
 
+    // Check for rapid resizes (potential feedback loop)
+    const lastResize = this.sessionResizeSources.get(sessionId);
+    if (lastResize) {
+      const timeSinceLastResize = currentTime - lastResize.timestamp;
+      if (timeSinceLastResize < 100) {
+        // Less than 100ms since last resize - this might indicate a loop
+        logger.warn(
+          `Rapid resize detected for session ${sessionId}: ${timeSinceLastResize}ms since last resize (${lastResize.cols}x${lastResize.rows} -> ${cols}x${rows})`
+        );
+      }
+    }
+
     try {
       // If we have an in-memory session with active PTY, resize it
       if (memorySession?.ptyProcess) {
@@ -1392,7 +1418,7 @@ export class PtyManager extends EventEmitter {
           timestamp: currentTime,
         });
 
-        logger.debug(`Resized session ${sessionId} to ${cols}x${rows} from browser`);
+        logger.debug(`Resized session ${sessionId} to ${cols}x${rows}`);
       } else {
         // For external sessions, try to send resize via control pipe
         const resizeMessage: ResizeControlMessage = {
