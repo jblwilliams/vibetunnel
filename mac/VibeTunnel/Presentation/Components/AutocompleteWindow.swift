@@ -114,11 +114,8 @@ struct AutocompleteWindowView: NSViewRepresentable {
             }
             .frame(width: width)
             .frame(maxHeight: 200)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(Color(NSColor.controlBackgroundColor))
-                    .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-            )
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+            .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
             .overlay(
                 RoundedRectangle(cornerRadius: 6)
                     .stroke(Color.primary.opacity(0.1), lineWidth: 1)
