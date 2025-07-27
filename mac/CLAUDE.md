@@ -259,7 +259,25 @@ log stream --predicate 'subsystem == "sh.vibetunnel.vibetunnel" AND category == 
 - Server logs (Node.js output) are under the "ServerOutput" category
 - Look for `[CLIENT:*]` prefix to identify frontend-originated logs
 
-## Testing the Web Interface
+## Testing
+
+### Running macOS Tests
+
+**IMPORTANT**: macOS tests MUST be run using Xcode commands (XcodeBuildMCP), NOT with `swift test`:
+- Use XcodeBuildMCP test commands like `test_macos_ws` or `test_macos_proj`
+- Running tests with `swift test` will cause crashes, especially with UserNotifications framework
+- The test environment requires proper Xcode configuration and entitlements
+
+Example:
+```
+# CORRECT - Use XcodeBuildMCP:
+test_macos_ws(workspacePath: "/path/to/VibeTunnel.xcworkspace", scheme: "VibeTunnelTests")
+
+# WRONG - Do NOT use:
+swift test
+```
+
+### Testing the Web Interface
 
 The VibeTunnel server runs on localhost:4020 by default. To test the web interface:
 
