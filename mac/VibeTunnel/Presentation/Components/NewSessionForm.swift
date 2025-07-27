@@ -361,7 +361,7 @@ struct NewSessionForm: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 16)
             }
-            .frame(maxHeight: 400)
+            .frame(minHeight: 400)
 
             Divider()
 
@@ -406,6 +406,7 @@ struct NewSessionForm: View {
             .padding(.vertical, 12)
         }
         .frame(width: 384)
+        .frame(minHeight: 500)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .fixedSize(horizontal: true, vertical: false)

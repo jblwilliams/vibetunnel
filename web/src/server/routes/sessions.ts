@@ -79,11 +79,11 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
       logger.debug(`[GET /sessions] Found ${localSessions.length} local sessions`);
 
       // Log session names for debugging
-      localSessions.forEach((session) => {
-        logger.debug(
-          `[GET /sessions] Session ${session.id}: name="${session.name || 'null'}", workingDir="${session.workingDir}"`
-        );
-      });
+      // localSessions.forEach((session) => {
+      //   logger.debug(
+      //     `[GET /sessions] Session ${session.id}: name="${session.name || 'null'}", workingDir="${session.workingDir}"`
+      //   );
+      // });
 
       // Add source info to local sessions and detect Git info if missing
       const localSessionsWithSource = await Promise.all(
@@ -92,9 +92,9 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
           if (!session.gitRepoPath && session.workingDir) {
             try {
               const gitInfo = await detectGitInfo(session.workingDir);
-              logger.debug(
-                `[GET /sessions] Detected Git info for session ${session.id}: repo=${gitInfo.gitRepoPath}, branch=${gitInfo.gitBranch}`
-              );
+              // logger.debug(
+              //   `[GET /sessions] Detected Git info for session ${session.id}: repo=${gitInfo.gitRepoPath}, branch=${gitInfo.gitBranch}`
+              // );
               return {
                 ...session,
                 ...gitInfo,
@@ -615,9 +615,9 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
       if (!session.gitRepoPath && session.workingDir) {
         try {
           const gitInfo = await detectGitInfo(session.workingDir);
-          logger.debug(
-            `[GET /sessions/:id] Detected Git info for session ${session.id}: repo=${gitInfo.gitRepoPath}, branch=${gitInfo.gitBranch}`
-          );
+          // logger.debug(
+          //   `[GET /sessions/:id] Detected Git info for session ${session.id}: repo=${gitInfo.gitRepoPath}, branch=${gitInfo.gitBranch}`
+          // );
           res.json({ ...session, ...gitInfo });
           return;
         } catch (error) {

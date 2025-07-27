@@ -1156,9 +1156,9 @@ export class TerminalManager {
     const listeners = this.bufferListeners.get(sessionId);
     if (!listeners || listeners.size === 0) return;
 
-    logger.debug(
-      `Notifying ${listeners.size} buffer change listeners for session ${truncateForLog(sessionId)}`
-    );
+    // logger.debug(
+    //   `Notifying ${listeners.size} buffer change listeners for session ${truncateForLog(sessionId)}`
+    // );
 
     try {
       // Get full buffer snapshot

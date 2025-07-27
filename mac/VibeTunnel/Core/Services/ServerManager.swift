@@ -74,10 +74,10 @@ class ServerManager {
             let mode = DashboardAccessMode(rawValue: rawValue) ?? .network
 
             // Log for debugging
-            logger
-                .debug(
-                    "bindAddress getter: rawValue='\(rawValue)', mode=\(mode.rawValue), bindAddress=\(mode.bindAddress)"
-                )
+            // logger
+            //     .debug(
+            //         "bindAddress getter: rawValue='\(rawValue)', mode=\(mode.rawValue), bindAddress=\(mode.bindAddress)"
+            //     )
 
             return mode.bindAddress
         }
