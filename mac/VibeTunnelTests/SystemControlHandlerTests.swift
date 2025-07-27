@@ -6,7 +6,7 @@ import Testing
 struct SystemControlHandlerTests {
     @MainActor
     @Test("Handles system ready event")
-    func systemReady() async throws {
+    func systemReadyEvent() async throws {
         // Given
         var systemReadyCalled = false
         let handler = SystemControlHandler(onSystemReady: {
@@ -27,7 +27,7 @@ struct SystemControlHandlerTests {
 
         // Then
         #expect(response == nil) // Events don't return responses
-        // System ready check removed as variable is write-only
+        #expect(systemReadyCalled) // Verify the callback was called
     }
 
     @MainActor

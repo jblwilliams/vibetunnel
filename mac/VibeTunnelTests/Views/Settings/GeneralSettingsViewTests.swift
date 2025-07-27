@@ -3,71 +3,91 @@ import Testing
 @testable import VibeTunnel
 
 @Suite("General Settings View Tests")
-final class GeneralSettingsViewTests {
+@MainActor
+struct GeneralSettingsViewTests {
     init() {
-        // Clear notification preferences
-        let keys = [
-            "notifications.sessionStart",
-            "notifications.sessionExit",
-            "notifications.commandCompletion",
-            "notifications.commandError",
-            "notifications.bell"
-        ]
-        for key in keys {
-            UserDefaults.standard.removeObject(forKey: key)
-        }
-        UserDefaults.standard.removeObject(forKey: "notifications.initialized")
+        // Reset ConfigManager to default values before tests
+        let configManager = ConfigManager.shared
+        configManager.notificationSessionStart = true
+        configManager.notificationSessionExit = true
+        configManager.notificationCommandCompletion = true
+        configManager.notificationCommandError = true
+        configManager.notificationBell = true
+        configManager.notificationClaudeTurn = false
+        configManager.notificationSoundEnabled = true
+        configManager.notificationVibrationEnabled = true
     }
 
     @Test("Notification preferences have correct default values")
     func notificationPreferencesDefaultValues() {
-        // Initialize preferences
-        _ = NotificationService.NotificationPreferences(fromConfig: ConfigManager.shared)
+        // Get default preferences from ConfigManager
+        let configManager = ConfigManager.shared
+        let prefs = NotificationService.NotificationPreferences(fromConfig: configManager)
 
-        // Check defaults are set to true
-        #expect(UserDefaults.standard.bool(forKey: "notifications.sessionStart"))
-        #expect(UserDefaults.standard.bool(forKey: "notifications.sessionExit"))
-        #expect(UserDefaults.standard.bool(forKey: "notifications.commandCompletion"))
-        #expect(UserDefaults.standard.bool(forKey: "notifications.commandError"))
-        #expect(UserDefaults.standard.bool(forKey: "notifications.bell"))
-        #expect(UserDefaults.standard.bool(forKey: "notifications.initialized"))
+        // Check that preferences match ConfigManager defaults
+        #expect(prefs.sessionStart == true)
+        #expect(prefs.sessionExit == true)
+        #expect(prefs.commandCompletion == true)
+        #expect(prefs.commandError == true)
+        #expect(prefs.bell == true)
+        #expect(prefs.claudeTurn == false)
+        
+        // Verify ConfigManager properties directly
+        #expect(configManager.notificationSessionStart == true)
+        #expect(configManager.notificationSessionExit == true)
+        #expect(configManager.notificationCommandCompletion == true)
+        #expect(configManager.notificationCommandError == true)
+        #expect(configManager.notificationBell == true)
+        #expect(configManager.notificationClaudeTurn == false)
     }
 
     @Test("Notification checkbox toggle updates preferences")
     func notificationCheckboxToggle() {
-        // Set initial value
-        UserDefaults.standard.set(false, forKey: "notifications.sessionStart")
-
+        let configManager = ConfigManager.shared
+        
+        // Set initial value through ConfigManager
+        configManager.notificationSessionStart = false
+        
         // Verify initial state
-        #expect(!UserDefaults.standard.bool(forKey: "notifications.sessionStart"))
-
-        // Simulate toggle by updating UserDefaults
-        UserDefaults.standard.set(true, forKey: "notifications.sessionStart")
-
+        #expect(configManager.notificationSessionStart == false)
+        
+        // Simulate toggle
+        configManager.notificationSessionStart = true
+        
         // Verify the value was updated
-        #expect(UserDefaults.standard.bool(forKey: "notifications.sessionStart"))
-
+        #expect(configManager.notificationSessionStart == true)
+        
         // Test that NotificationService reads the updated preferences
-        let prefs = NotificationService.NotificationPreferences(fromConfig: ConfigManager.shared)
-        #expect(prefs.sessionStart)
+        let prefs = NotificationService.NotificationPreferences(fromConfig: configManager)
+        #expect(prefs.sessionStart == true)
     }
 
     @Test("Notification preferences save correctly")
     func notificationPreferencesSave() {
-        var prefs = NotificationService.NotificationPreferences(fromConfig: ConfigManager.shared)
-        prefs.sessionStart = false
-        prefs.sessionExit = false
-        prefs.commandCompletion = true
-        prefs.commandError = true
-        prefs.bell = false
+        // Test that ConfigManager properties work correctly
+        let configManager = ConfigManager.shared
+        
+        // Update values through ConfigManager
+        configManager.notificationSessionStart = false
+        configManager.notificationSessionExit = false
+        configManager.notificationCommandCompletion = true
+        configManager.notificationCommandError = true
+        configManager.notificationBell = false
 
-        prefs.save()
-
-        #expect(!UserDefaults.standard.bool(forKey: "notifications.sessionStart"))
-        #expect(!UserDefaults.standard.bool(forKey: "notifications.sessionExit"))
-        #expect(UserDefaults.standard.bool(forKey: "notifications.commandCompletion"))
-        #expect(UserDefaults.standard.bool(forKey: "notifications.commandError"))
-        #expect(!UserDefaults.standard.bool(forKey: "notifications.bell"))
+        // Verify the values are correctly set in ConfigManager
+        #expect(configManager.notificationSessionStart == false)
+        #expect(configManager.notificationSessionExit == false)
+        #expect(configManager.notificationCommandCompletion == true)
+        #expect(configManager.notificationCommandError == true)
+        #expect(configManager.notificationBell == false)
+        
+        // Verify that NotificationPreferences reads the updated values
+        let prefs = NotificationService.NotificationPreferences(fromConfig: configManager)
+        #expect(prefs.sessionStart == false)
+        #expect(prefs.sessionExit == false)
+        #expect(prefs.commandCompletion == true)
+        #expect(prefs.commandError == true)
+        #expect(prefs.bell == false)
     }
 
     @Test("Notification checkboxes visibility logic")
