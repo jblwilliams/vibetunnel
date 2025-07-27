@@ -349,10 +349,8 @@ export function connectToStream(
 
       // Check if this is a header message with terminal dimensions
       if (data.version && data.width && data.height) {
-        // Header message - set initial terminal size
-        if (terminal.setTerminalSize) {
-          terminal.setTerminalSize(data.width, data.height);
-        }
+        // Header message - DO NOT set terminal size to avoid resize loop
+        // The terminal will naturally adjust to the content from the server
         return;
       }
 
@@ -384,23 +382,15 @@ export function connectToStream(
             flushOutputBuffer();
           }
 
-          // Update terminal dimensions
-          const match = eventData.match(/^(\d+)x(\d+)$/);
-          if (match && terminal.setTerminalSize) {
-            const cols = Number.parseInt(match[1], 10);
-            const rows = Number.parseInt(match[2], 10);
-            terminal.setTerminalSize(cols, rows);
-
-            // Dispatch resize event if terminal supports it
-            if (terminal.dispatchEvent) {
-              terminal.dispatchEvent(
-                new CustomEvent('terminal-resize', {
-                  detail: { cols, rows },
-                  bubbles: true,
-                })
-              );
-            }
-          }
+          // DO NOT update terminal dimensions for server-sent resize events!
+          // The server already knows the size (it sent it), and calling setTerminalSize
+          // triggers the ResizeObserver which creates a feedback loop:
+          // 1. Server sends resize -> 2. setTerminalSize triggers ResizeObserver
+          // 3. ResizeObserver calls fitTerminal -> 4. fitTerminal dispatches terminal-resize
+          // 5. terminal-resize event is sent back to server -> 6. Loop continues
+          //
+          // The terminal will naturally adjust to match the content size from the server.
+          // Server already knows the size, no need to parse or log this
         } else if (type === 'i') {
           // Ignore 'i' (input) events - those are for sending to server, not displaying
         } else {
