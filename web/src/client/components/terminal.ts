@@ -15,7 +15,6 @@ import { html, LitElement, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { processKeyboardShortcuts } from '../utils/keyboard-shortcut-highlighter.js';
 import { createLogger } from '../utils/logger.js';
-import { detectMobile } from '../utils/mobile-utils.js';
 import { TerminalPreferencesManager } from '../utils/terminal-preferences.js';
 import { TERMINAL_THEMES, type TerminalThemeId } from '../utils/terminal-themes.js';
 import { getCurrentTheme } from '../utils/theme-utils.js';
@@ -55,6 +54,7 @@ export class Terminal extends LitElement {
   private debugMode = false;
   private renderCount = 0;
   private totalRenderTime = 0;
+  private _lastFitTime?: number;
   private lastRenderTime = 0;
 
   get viewportY() {
@@ -328,10 +328,14 @@ export class Terminal extends LitElement {
   }
 
   private requestResize(source: string) {
-    // Update mobile state using consistent detection
-    this.isMobile = detectMobile();
+    // Update mobile state using window width for consistency with app.ts
+    // This ensures Chrome mobile simulation works correctly
+    const MOBILE_BREAKPOINT = 768; // Same as BREAKPOINTS.MOBILE
+    this.isMobile = window.innerWidth < MOBILE_BREAKPOINT;
 
-    logger.debug(`[Terminal] Resize requested from ${source} (mobile: ${this.isMobile})`);
+    logger.debug(
+      `[Terminal] Resize requested from ${source} (mobile: ${this.isMobile}, width: ${window.innerWidth})`
+    );
 
     // Cancel any pending resize
     if (this.pendingResize) {
@@ -566,7 +570,21 @@ export class Terminal extends LitElement {
       return;
     }
 
-    logger.debug(`[Terminal] fitTerminal called from source: ${source || 'unknown'}`);
+    const timestamp = Date.now();
+    const timeSinceLastFit = this._lastFitTime ? timestamp - this._lastFitTime : 0;
+    this._lastFitTime = timestamp;
+
+    logger.debug(`[Terminal] 📱 fitTerminal called`, {
+      source: source || 'unknown',
+      isMobile: this.isMobile,
+      windowWidth: window.innerWidth,
+      timeSinceLastFit,
+      cols: this.cols,
+      rows: this.rows,
+      actualRows: this.actualRows,
+      bufferLength: this.terminal.buffer.active.length,
+    });
+
     // Use the class property instead of rechecking
     if (this.isMobile) {
       logger.debug(
@@ -740,10 +758,11 @@ export class Terminal extends LitElement {
   private setupResize() {
     if (!this.container) return;
 
-    // Set the class property using consistent detection
-    this.isMobile = detectMobile();
+    // Set the class property using window width for consistency with app.ts
+    const MOBILE_BREAKPOINT = 768; // Same as BREAKPOINTS.MOBILE
+    this.isMobile = window.innerWidth < MOBILE_BREAKPOINT;
     logger.debug(
-      `[Terminal] Setting up resize - isMobile: ${this.isMobile}, userAgent: ${navigator.userAgent}`
+      `[Terminal] Setting up resize - isMobile: ${this.isMobile}, width: ${window.innerWidth}, userAgent: ${navigator.userAgent}`
     );
 
     if (this.isMobile) {
@@ -1277,7 +1296,16 @@ export class Terminal extends LitElement {
       return;
     }
 
-    logger.debug(`Terminal.write called with ${data.length} chars, followCursor=${followCursor}`);
+    // Only log significant writes on mobile
+    if (this.isMobile && data.length > 100) {
+      logger.debug(`[Terminal] 📱 Large write to terminal`, {
+        sessionId: this.sessionId,
+        dataLength: data.length,
+        followCursor,
+        bufferLength: this.terminal.buffer.active.length,
+        scrollPosition: this._viewportY,
+      });
+    }
 
     // Check for cursor visibility sequences
     if (data.includes('\x1b[?25l')) {
