@@ -5,6 +5,7 @@ import UserNotifications
 @Suite("NotificationService Tests")
 struct NotificationServiceTests {
     @Test("Default notification preferences are loaded correctly")
+    @MainActor
     func defaultPreferences() {
         // Clear UserDefaults to simulate fresh install
         let defaults = UserDefaults.standard
