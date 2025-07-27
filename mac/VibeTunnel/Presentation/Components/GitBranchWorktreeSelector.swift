@@ -255,16 +255,14 @@ struct GitBranchWorktreeSelector: View {
 
     private func formatWorktreeName(_ worktree: Worktree) -> String {
         let folderName = URL(fileURLWithPath: worktree.path).lastPathComponent
-        let showBranch = folderName.lowercased() != worktree.branch.lowercased() &&
-            !folderName.lowercased().hasSuffix("-\(worktree.branch.lowercased())")
+        // Strip refs/heads/ prefix from branch name for comparison and display
+        let branchName = worktree.branch.replacingOccurrences(of: "refs/heads/", with: "")
+        let showBranch = folderName.lowercased() != branchName.lowercased() &&
+            !folderName.lowercased().hasSuffix("-\(branchName.lowercased())")
 
-        var result = ""
-        if worktree.branch == selectedWorktree {
-            result += "Use selected worktree: "
-        }
-        result += folderName
+        var result = folderName
         if showBranch {
-            result += " [\(worktree.branch)]"
+            result += " [\(branchName)]"
         }
         if worktree.isMainWorktree == true {
             result += " (main)"
