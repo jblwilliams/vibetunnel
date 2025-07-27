@@ -634,7 +634,6 @@ final class NotificationService: NSObject {
     private func handleCommandError(_ json: [String: Any]) {
         let command = json["command"] as? String ?? "Command"
         let exitCode = json["exitCode"] as? Int ?? 1
-        let duration = json["duration"] as? Int
 
         let content = UNMutableNotificationContent()
         content.title = "Command Failed"
@@ -729,7 +728,10 @@ final class NotificationService: NSObject {
     }
 
     deinit {
-        disconnect()
+        // Note: We can't call disconnect() here because it's @MainActor isolated
+        // The cleanup will happen when the EventSource is deallocated
+        eventSource?.disconnect()
+        eventSource = nil
         NotificationCenter.default.removeObserver(self)
     }
 }

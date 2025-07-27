@@ -59,6 +59,11 @@ class ServerManager {
         }
         set { UserDefaults.standard.set(newValue, forKey: UserDefaultsKeys.serverPort) }
     }
+    
+    /// The local authentication token for the current server instance
+    var localAuthToken: String? {
+        bunServer?.localToken
+    }
 
     var bindAddress: String {
         get {
