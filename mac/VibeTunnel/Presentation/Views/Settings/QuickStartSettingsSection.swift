@@ -107,6 +107,8 @@ struct QuickStartSettingsSection: View {
             Text("Commands shown in the new session form for quick access.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
         }
     }
 
@@ -253,10 +255,10 @@ private struct QuickStartCommandRow: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 4)
-                .fill(isEditing ? Color.accentColor.opacity(0.1) : Color.clear)
+                .fill(isEditing ? Color.accentColor.opacity(0.1) : (isHovering ? Color(NSColor.separatorColor).opacity(0.05) : Color.clear))
         )
         .onHover { hovering in
             isHovering = hovering
