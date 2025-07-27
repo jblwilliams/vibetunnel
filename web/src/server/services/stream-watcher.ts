@@ -9,7 +9,22 @@ const logger = createLogger('stream-watcher');
 
 // Constants
 const HEADER_READ_BUFFER_SIZE = 4096;
-const CLEAR_SEQUENCE = '\x1b[3J';
+
+// Comprehensive list of ANSI sequences that warrant pruning
+const PRUNE_SEQUENCES = [
+  '\x1b[3J', // Clear scrollback buffer (xterm)
+  '\x1bc', // RIS - Full terminal reset
+  '\x1b[2J', // Clear screen (common)
+  '\x1b[H\x1b[J', // Home cursor + clear (older pattern)
+  '\x1b[H\x1b[2J', // Home cursor + clear screen variant
+  '\x1b[?1049h', // Enter alternate screen (vim, less, etc)
+  '\x1b[?1049l', // Exit alternate screen
+  '\x1b[?47h', // Save screen and enter alternate screen (older)
+  '\x1b[?47l', // Restore screen and exit alternate screen (older)
+];
+
+// Keep the old constant for compatibility
+const _CLEAR_SEQUENCE = '\x1b[3J';
 
 interface StreamClient {
   response: Response;
@@ -45,12 +60,41 @@ function isExitEvent(event: AsciinemaEvent): event is AsciinemaExitEvent {
 }
 
 /**
- * Checks if an output event contains a terminal clear sequence
+ * Checks if an output event contains any pruning sequence
  * @param event - The asciinema event to check
- * @returns true if the event contains a clear sequence
+ * @returns true if the event contains a pruning sequence
  */
 function containsClearSequence(event: AsciinemaEvent): boolean {
-  return isOutputEvent(event) && event[2].includes(CLEAR_SEQUENCE);
+  if (!isOutputEvent(event)) return false;
+
+  const data = event[2];
+  // Check if data contains any of the pruning sequences
+  return PRUNE_SEQUENCES.some((sequence) => data.includes(sequence));
+}
+
+/**
+ * Finds the last pruning sequence in the data and its position
+ * @param data - The output data to search
+ * @returns Object with the sequence and its position, or null if not found
+ */
+function findLastPrunePoint(data: string): { sequence: string; position: number } | null {
+  let lastPosition = -1;
+  let lastSequence = '';
+
+  for (const sequence of PRUNE_SEQUENCES) {
+    const pos = data.lastIndexOf(sequence);
+    if (pos > lastPosition) {
+      lastPosition = pos;
+      lastSequence = sequence;
+    }
+  }
+
+  if (lastPosition === -1) return null;
+
+  return {
+    sequence: lastSequence,
+    position: lastPosition + lastSequence.length,
+  };
 }
 
 interface WatcherInfo {
@@ -73,6 +117,107 @@ export class StreamWatcher {
       this.cleanup();
     });
     logger.debug('stream watcher initialized');
+  }
+
+  /**
+   * Process a clear sequence event and update tracking variables
+   */
+  private processClearSequence(
+    event: AsciinemaOutputEvent,
+    eventIndex: number,
+    fileOffset: number,
+    currentResize: AsciinemaResizeEvent | null
+  ): {
+    lastClearIndex: number;
+    lastClearOffset: number;
+    lastResizeBeforeClear: AsciinemaResizeEvent | null;
+  } | null {
+    const prunePoint = findLastPrunePoint(event[2]);
+    if (!prunePoint) return null;
+
+    // Calculate precise offset: current position minus unused data after prune point
+    const unusedBytes = Buffer.byteLength(event[2].substring(prunePoint.position), 'utf8');
+    const lastClearOffset = fileOffset - unusedBytes;
+
+    logger.debug(
+      `found pruning sequence '${prunePoint.sequence.split('\x1b').join('\\x1b')}' at event index ${eventIndex}, ` +
+        `offset: ${lastClearOffset}, current resize: ${currentResize ? currentResize[2] : 'none'}`
+    );
+
+    return {
+      lastClearIndex: eventIndex,
+      lastClearOffset,
+      lastResizeBeforeClear: currentResize,
+    };
+  }
+
+  /**
+   * Parse a line of asciinema data and return the parsed event
+   */
+  private parseAsciinemaLine(line: string): AsciinemaEvent | AsciinemaHeader | null {
+    if (!line.trim()) return null;
+
+    try {
+      const parsed = JSON.parse(line);
+
+      // Check if it's a header
+      if (parsed.version && parsed.width && parsed.height) {
+        return parsed as AsciinemaHeader;
+      }
+
+      // Check if it's an event
+      if (Array.isArray(parsed)) {
+        if (parsed[0] === 'exit') {
+          return parsed as AsciinemaExitEvent;
+        } else if (parsed.length >= 3 && typeof parsed[0] === 'number') {
+          return parsed as AsciinemaEvent;
+        }
+      }
+
+      return null;
+    } catch (e) {
+      logger.debug(`skipping invalid JSON line: ${e}`);
+      return null;
+    }
+  }
+
+  /**
+   * Send an event to the client with proper formatting
+   */
+  private sendEventToClient(
+    client: StreamClient,
+    event: AsciinemaEvent | AsciinemaHeader,
+    makeInstant: boolean = false
+  ): void {
+    try {
+      let dataToSend: AsciinemaEvent | AsciinemaHeader = event;
+
+      // For existing content, set timestamp to 0
+      if (
+        makeInstant &&
+        Array.isArray(event) &&
+        event.length >= 3 &&
+        typeof event[0] === 'number'
+      ) {
+        dataToSend = [0, event[1], event[2]];
+      }
+
+      client.response.write(`data: ${JSON.stringify(dataToSend)}\n\n`);
+
+      // Handle exit events
+      if (Array.isArray(event) && isExitEvent(event)) {
+        logger.log(
+          chalk.yellow(
+            `session ${client.response.locals?.sessionId || 'unknown'} already ended, closing stream`
+          )
+        );
+        client.response.end();
+      }
+    } catch (error) {
+      logger.debug(
+        `client write failed (likely disconnected): ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   }
 
   /**
@@ -270,12 +415,17 @@ export class StreamWatcher {
 
                   // Check for clear sequence in output events
                   if (containsClearSequence(event)) {
-                    lastClearIndex = events.length;
-                    lastResizeBeforeClear = currentResize;
-                    lastClearOffset = fileOffset;
-                    logger.debug(
-                      `found clear sequence at event index ${lastClearIndex}, current resize: ${currentResize ? currentResize[2] : 'none'}`
+                    const clearResult = this.processClearSequence(
+                      event as AsciinemaOutputEvent,
+                      events.length,
+                      fileOffset,
+                      currentResize
                     );
+                    if (clearResult) {
+                      lastClearIndex = clearResult.lastClearIndex;
+                      lastClearOffset = clearResult.lastClearOffset;
+                      lastResizeBeforeClear = clearResult.lastResizeBeforeClear;
+                    }
                   }
 
                   events.push(event);
@@ -305,12 +455,17 @@ export class StreamWatcher {
                   currentResize = event;
                 }
                 if (containsClearSequence(event)) {
-                  lastClearIndex = events.length;
-                  lastResizeBeforeClear = currentResize;
-                  lastClearOffset = fileOffset;
-                  logger.debug(
-                    `found clear sequence at event index ${lastClearIndex} (last event)`
+                  const clearResult = this.processClearSequence(
+                    event as AsciinemaOutputEvent,
+                    events.length,
+                    fileOffset,
+                    currentResize
                   );
+                  if (clearResult) {
+                    lastClearIndex = clearResult.lastClearIndex;
+                    lastClearOffset = clearResult.lastClearOffset;
+                    lastResizeBeforeClear = clearResult.lastResizeBeforeClear;
+                  }
                 }
                 events.push(event);
               }
@@ -378,90 +533,8 @@ export class StreamWatcher {
 
       analysisStream.on('error', (error) => {
         logger.error('failed to analyze stream for pruning:', error);
-        // Fall back to original implementation without pruning
-        this.sendExistingContentWithoutPruning(sessionId, streamPath, client);
-      });
-    } catch (error) {
-      logger.error('failed to create read stream:', error);
-    }
-  }
-
-  /**
-   * Original implementation without pruning (fallback)
-   */
-  private sendExistingContentWithoutPruning(
-    _sessionId: string,
-    streamPath: string,
-    client: StreamClient
-  ): void {
-    try {
-      const stream = fs.createReadStream(streamPath, { encoding: 'utf8' });
-      let exitEventFound = false;
-      let lineBuffer = '';
-
-      stream.on('data', (chunk: string | Buffer) => {
-        lineBuffer += chunk.toString();
-        const lines = lineBuffer.split('\n');
-        lineBuffer = lines.pop() || ''; // Keep incomplete line for next chunk
-
-        for (const line of lines) {
-          if (line.trim()) {
-            try {
-              const parsed = JSON.parse(line);
-              if (parsed.version && parsed.width && parsed.height) {
-                // Send header as-is
-                client.response.write(`data: ${line}\n\n`);
-              } else if (Array.isArray(parsed) && parsed.length >= 3) {
-                if (parsed[0] === 'exit') {
-                  exitEventFound = true;
-                  client.response.write(`data: ${line}\n\n`);
-                } else {
-                  // Set timestamp to 0 for existing content
-                  const instantEvent = [0, parsed[1], parsed[2]];
-                  client.response.write(`data: ${JSON.stringify(instantEvent)}\n\n`);
-                }
-              }
-            } catch (e) {
-              logger.debug(`skipping invalid JSON line during replay: ${e}`);
-            }
-          }
-        }
-      });
-
-      stream.on('end', () => {
-        // Process any remaining line
-        if (lineBuffer.trim()) {
-          try {
-            const parsed = JSON.parse(lineBuffer);
-            if (parsed.version && parsed.width && parsed.height) {
-              client.response.write(`data: ${lineBuffer}\n\n`);
-            } else if (Array.isArray(parsed) && parsed.length >= 3) {
-              if (parsed[0] === 'exit') {
-                exitEventFound = true;
-                client.response.write(`data: ${lineBuffer}\n\n`);
-              } else {
-                const instantEvent = [0, parsed[1], parsed[2]];
-                client.response.write(`data: ${JSON.stringify(instantEvent)}\n\n`);
-              }
-            }
-          } catch (e) {
-            logger.debug(`skipping invalid JSON in line buffer: ${e}`);
-          }
-        }
-
-        // If exit event found, close connection
-        if (exitEventFound) {
-          logger.log(
-            chalk.yellow(
-              `session ${client.response.locals?.sessionId || 'unknown'} already ended, closing stream`
-            )
-          );
-          client.response.end();
-        }
-      });
-
-      stream.on('error', (error) => {
-        logger.error('failed to stream existing content:', error);
+        // If stream fails, client will simply not receive existing content
+        // This is extremely rare and would indicate a serious filesystem issue
       });
     } catch (error) {
       logger.error('failed to create read stream:', error);
@@ -530,65 +603,50 @@ export class StreamWatcher {
    * Broadcast a line to all clients
    */
   private broadcastLine(sessionId: string, line: string, watcherInfo: WatcherInfo): void {
-    let eventData: string | null = null;
+    const parsed = this.parseAsciinemaLine(line);
 
-    try {
-      const parsed = JSON.parse(line);
-      if (parsed.version && parsed.width && parsed.height) {
-        return; // Skip duplicate headers
-      }
-      if (Array.isArray(parsed) && parsed.length >= 3) {
-        if (parsed[0] === 'exit') {
-          logger.log(chalk.yellow(`session ${sessionId} ended with exit code ${parsed[2]}`));
-          eventData = `data: ${JSON.stringify(parsed)}\n\n`;
-
-          // Send exit event to all clients and close connections
-          for (const client of watcherInfo.clients) {
-            try {
-              client.response.write(eventData);
-              client.response.end();
-            } catch (error) {
-              logger.error('failed to send exit event to client:', error);
-            }
-          }
-          return;
-        } else {
-          // Calculate relative timestamp for each client
-          for (const client of watcherInfo.clients) {
-            const currentTime = Date.now() / 1000;
-            const relativeEvent = [currentTime - client.startTime, parsed[1], parsed[2]];
-            const clientData = `data: ${JSON.stringify(relativeEvent)}\n\n`;
-
-            try {
-              client.response.write(clientData);
-              if (client.response.flush) client.response.flush();
-            } catch (error) {
-              logger.debug(
-                `client write failed (likely disconnected): ${error instanceof Error ? error.message : String(error)}`
-              );
-            }
-          }
-          return; // Already handled per-client
-        }
-      }
-    } catch {
+    if (!parsed) {
       // Handle non-JSON as raw output
       logger.debug(`broadcasting raw output line: ${line.substring(0, 50)}...`);
       const currentTime = Date.now() / 1000;
       for (const client of watcherInfo.clients) {
-        const castEvent = [currentTime - client.startTime, 'o', line];
-        const clientData = `data: ${JSON.stringify(castEvent)}\n\n`;
-
-        try {
-          client.response.write(clientData);
-          if (client.response.flush) client.response.flush();
-        } catch (error) {
-          logger.debug(
-            `client write failed (likely disconnected): ${error instanceof Error ? error.message : String(error)}`
-          );
-        }
+        const castEvent: AsciinemaOutputEvent = [currentTime - client.startTime, 'o', line];
+        this.sendEventToClient(client, castEvent);
       }
       return;
+    }
+
+    // Skip duplicate headers
+    if (!Array.isArray(parsed)) {
+      return;
+    }
+
+    // Handle exit events
+    if (isExitEvent(parsed)) {
+      logger.log(chalk.yellow(`session ${sessionId} ended with exit code ${parsed[1]}`));
+      for (const client of watcherInfo.clients) {
+        this.sendEventToClient(client, parsed);
+      }
+      return;
+    }
+
+    // Log resize broadcasts at debug level only
+    if (isResizeEvent(parsed)) {
+      logger.debug(`Broadcasting resize ${parsed[2]} to ${watcherInfo.clients.size} clients`);
+    }
+
+    // Calculate relative timestamp for each client
+    const currentTime = Date.now() / 1000;
+    for (const client of watcherInfo.clients) {
+      const relativeEvent: AsciinemaEvent = [currentTime - client.startTime, parsed[1], parsed[2]];
+      try {
+        client.response.write(`data: ${JSON.stringify(relativeEvent)}\n\n`);
+        if (client.response.flush) client.response.flush();
+      } catch (error) {
+        logger.debug(
+          `client write failed (likely disconnected): ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
     }
   }
 
