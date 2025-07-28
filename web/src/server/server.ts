@@ -397,12 +397,12 @@ export async function createApp(): Promise<AppInstance> {
   logger.debug('Configured security headers with helmet');
 
   // Add compression middleware with Brotli support
-  // Skip compression for SSE streams (asciicast)
+  // Skip compression for SSE streams (asciicast and events)
   app.use(
     compression({
       filter: (req, res) => {
-        // Skip compression for Server-Sent Events (asciicast streams)
-        if (req.path.match(/\/api\/sessions\/[^/]+\/stream$/)) {
+        // Skip compression for Server-Sent Events
+        if (req.path.match(/\/api\/sessions\/[^/]+\/stream$/) || req.path === '/api/events') {
           return false;
         }
         // Use default filter for other requests
@@ -412,7 +412,7 @@ export async function createApp(): Promise<AppInstance> {
       level: 6, // Balanced compression level
     })
   );
-  logger.debug('Configured compression middleware (with asciicast exclusion)');
+  logger.debug('Configured compression middleware (with SSE exclusion)');
 
   // Add JSON body parser middleware with size limit
   app.use(express.json({ limit: '10mb' }));
