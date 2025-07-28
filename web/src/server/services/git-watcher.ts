@@ -243,8 +243,9 @@ export class GitWatcher {
 
     return (
       oldStatus.modified !== newStatus.modified ||
-      oldStatus.untracked !== newStatus.untracked ||
+      oldStatus.added !== newStatus.added ||
       oldStatus.staged !== newStatus.staged ||
+      oldStatus.deleted !== newStatus.deleted ||
       oldStatus.ahead !== newStatus.ahead ||
       oldStatus.behind !== newStatus.behind
     );
@@ -268,8 +269,7 @@ export class GitWatcher {
         type: 'git-status-update',
         sessionId,
         gitModifiedCount: status.modified,
-        gitUntrackedCount: status.untracked,
-        gitStagedCount: status.staged,
+        gitAddedCount: status.added,
         gitDeletedCount: status.deleted,
         gitAheadCount: status.ahead,
         gitBehindCount: status.behind,
