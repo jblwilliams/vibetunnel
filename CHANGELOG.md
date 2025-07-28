@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.0-beta.15] - 2025-07-25
+## [1.0.0-beta.15] - 2025-07-28
 
 ### ✨ Major Features
 
@@ -93,6 +93,38 @@
 - Removed outdated crash investigation documentation
 - Comprehensive JSDoc documentation added to service classes
 - Removed backwards compatibility for older vt command versions
+
+#### **Push Notifications**
+- Native push notifications for terminal events - get notified when commands complete, sessions start/end, or errors occur
+- Customizable notification types: Session exits, command completion (>3s), command errors, terminal bell, Claude AI turn notifications
+- Web-based onboarding flow for easy setup on macOS and mobile devices
+- Privacy-focused: All notifications are processed locally, no terminal content is sent to servers
+- Smart Claude detection: Automatically identifies Claude CLI sessions and tracks when Claude finishes responding
+
+#### **Improved Terminal Output Handling**
+- Enhanced asciinema stream pruning: Removes noisy ANSI sequences for cleaner recordings
+- Better mobile terminal detection to optimize output rendering
+- Fixed terminal resize event handling to prevent output corruption
+- Improved logging for debugging terminal lifecycle issues
+
+#### **UI/UX Enhancements**
+- Modernized macOS autocomplete dropdown with native SwiftUI materials and transparency
+- Fixed Quick Start Commands UI with proper native macOS table styling
+- Added help tooltips throughout settings UI explaining each notification type
+- Fixed mouse hover selection issues in autocomplete dropdown
+- Improved button click targets for better usability
+
+#### **Socket API Improvements**
+- Refactored socket client with type-safe message handling
+- Removed HTTP fallback in favor of pure socket communication for better reliability
+- Added proper TypeScript types for all socket protocol messages
+- Cleaner public API without brittle type casting
+
+#### **Developer Tools**
+- Added `VIBETUNNEL_PREFER_DERIVED_DATA` environment variable for faster Xcode builds
+- Version tracking in socket protocol for better debugging
+- Consolidated duplicate Git status implementations for maintainability
+- Enhanced error logging for session termination debugging
 
 ## [1.0.0-beta.14] - 2025-07-21
 
