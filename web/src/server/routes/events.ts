@@ -1,5 +1,5 @@
 import { type Request, type Response, Router } from 'express';
-import { type ServerEvent } from '../../shared/types.js';
+import { type ServerEvent, ServerEventType } from '../../shared/types.js';
 import type { SessionMonitor } from '../services/session-monitor.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -64,11 +64,17 @@ export function createEventsRouter(sessionMonitor?: SessionMonitor): Router {
         // SessionMonitor already provides properly formatted ServerEvent objects
         logger.info(`📢 SessionMonitor notification: ${event.type} for session ${event.sessionId}`);
 
+        // Log test notifications specifically for debugging
+        if (event.type === ServerEventType.TestNotification) {
+          logger.info('🧪 Forwarding test notification through SSE:', event);
+        }
+
         // Proper SSE format with id, event, and data fields
         const sseMessage = `id: ${++eventId}\nevent: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
 
         try {
           res.write(sseMessage);
+          logger.debug(`✅ SSE event written: ${event.type}`);
         } catch (error) {
           logger.debug('Failed to write SSE event:', error);
           cleanup();
