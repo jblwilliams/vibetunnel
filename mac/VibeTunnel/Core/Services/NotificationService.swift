@@ -528,6 +528,9 @@ final class NotificationService: NSObject {
                 }
             case "connected":
                 logger.info("🔗 Received connected event from server")
+            case "test-notification":
+                logger.info("🧪 Processing test-notification event")
+                handleTestNotification(json)
             // No notification for connected events
             default:
                 logger.warning("Unknown event type: \(type)")
@@ -673,6 +676,27 @@ final class NotificationService: NSObject {
         deliverNotification(content, identifier: "bell-\(sessionId)-\(Date().timeIntervalSince1970)")
     }
 
+    private func handleTestNotification(_ json: [String: Any]) {
+        logger.info("🧪 Handling test notification from server")
+        
+        let title = json["title"] as? String ?? "VibeTunnel Test"
+        let body = json["body"] as? String ?? "Server-side notifications are working correctly!"
+        let message = json["message"] as? String
+        
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        if let message = message {
+            content.subtitle = message
+        }
+        content.sound = getNotificationSound()
+        content.categoryIdentifier = "TEST"
+        content.userInfo = ["type": "test-notification"]
+        
+        logger.info("📤 Delivering test notification: \(title) - \(body)")
+        deliverNotification(content, identifier: "test-\(UUID().uuidString)")
+    }
+    
     private func handleClaudeTurn(_ json: [String: Any]) {
         guard let sessionId = json["sessionId"] as? String else {
             logger.error("Claude turn event missing sessionId")
@@ -726,6 +750,34 @@ final class NotificationService: NSObject {
     private func scheduleNotificationCleanup(for key: String, after seconds: TimeInterval) {
         DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
             self?.recentlyNotifiedSessions.remove(key)
+        }
+    }
+
+    /// Send a test notification through the server to verify the full flow
+    func sendServerTestNotification() async {
+        logger.info("🧪 Sending test notification through server...")
+        
+        guard let url = serverManager.buildURL(endpoint: "/api/test-notification") else {
+            logger.error("Failed to build test notification URL")
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            
+            if let httpResponse = response as? HTTPURLResponse {
+                if httpResponse.statusCode == 200 {
+                    logger.info("✅ Server test notification sent successfully")
+                } else {
+                    logger.error("❌ Server test notification failed with status: \(httpResponse.statusCode)")
+                }
+            }
+        } catch {
+            logger.error("❌ Failed to send server test notification: \(error)")
         }
     }
 

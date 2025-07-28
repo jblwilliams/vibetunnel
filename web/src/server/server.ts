@@ -27,6 +27,7 @@ import { createPushRoutes } from './routes/push.js';
 import { createRemoteRoutes } from './routes/remotes.js';
 import { createRepositoryRoutes } from './routes/repositories.js';
 import { createSessionRoutes } from './routes/sessions.js';
+import { createTestNotificationRouter } from './routes/test-notification.js';
 import { WebSocketInputHandler } from './routes/websocket-input.js';
 import { createWorktreeRoutes } from './routes/worktrees.js';
 import { ActivityMonitor } from './services/activity-monitor.js';
@@ -916,6 +917,10 @@ export async function createApp(): Promise<AppInstance> {
   // Mount events router for SSE streaming
   app.use('/api', createEventsRouter(sessionMonitor));
   logger.debug('Mounted events routes');
+
+  // Mount test notification router
+  app.use('/api', createTestNotificationRouter(sessionMonitor));
+  logger.debug('Mounted test notification routes');
 
   // Initialize control socket
   try {

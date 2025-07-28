@@ -152,10 +152,8 @@ struct NotificationSettingsView: View {
                                 Button("Test Notification") {
                                     Task {
                                         isTestingNotification = true
-                                        await notificationService.sendGenericNotification(
-                                            title: "VibeTunnel Test",
-                                            body: "This is a test notification to verify your settings are working correctly."
-                                        )
+                                        // Use server test notification to verify the full flow
+                                        await notificationService.sendServerTestNotification()
                                         // Reset button state after a delay
                                         try? await Task.sleep(nanoseconds: 1_000_000_000)
                                         isTestingNotification = false
