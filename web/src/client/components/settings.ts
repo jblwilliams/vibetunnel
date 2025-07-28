@@ -484,11 +484,12 @@ export class Settings extends LitElement {
                       <div>
                         <h4 class="text-sm font-medium text-muted mb-3">Notification Types</h4>
                         <div class="space-y-2 bg-base rounded-lg p-3">
-                          ${this.renderNotificationToggle('sessionExit', 'Session Exit', 'When a session terminates')}
-                          ${this.renderNotificationToggle('sessionStart', 'Session Start', 'When a new session starts')}
-                          ${this.renderNotificationToggle('commandError', 'Session Errors', 'When errors occur in sessions')}
-                          ${this.renderNotificationToggle('commandCompletion', 'Command Completion', 'When long-running commands finish')}
-                          ${this.renderNotificationToggle('bell', 'System Alerts', 'Important system notifications')}
+                          ${this.renderNotificationToggle('sessionExit', 'Session Exit', 'When a session terminates or crashes (shows exit code)')}
+                          ${this.renderNotificationToggle('sessionStart', 'Session Start', 'When a new session starts (useful for shared terminals)')}
+                          ${this.renderNotificationToggle('commandError', 'Session Errors', 'When commands fail with non-zero exit codes')}
+                          ${this.renderNotificationToggle('commandCompletion', 'Command Completion', 'When commands taking >3 seconds finish (builds, tests, etc.)')}
+                          ${this.renderNotificationToggle('bell', 'System Alerts', 'Terminal bell (^G) from vim, IRC mentions, completion sounds')}
+                          ${this.renderNotificationToggle('claudeTurn', 'Claude Turn', 'When Claude AI finishes responding and awaits input')}
                         </div>
                       </div>
 
@@ -496,8 +497,8 @@ export class Settings extends LitElement {
                       <div>
                         <h4 class="text-sm font-medium text-muted mb-3">Notification Behavior</h4>
                         <div class="space-y-2 bg-base rounded-lg p-3">
-                          ${this.renderNotificationToggle('soundEnabled', 'Sound', 'Play sound with notifications')}
-                          ${this.renderNotificationToggle('vibrationEnabled', 'Vibration', 'Vibrate device with notifications')}
+                          ${this.renderNotificationToggle('soundEnabled', 'Sound', 'Play a notification sound when alerts are triggered')}
+                          ${this.renderNotificationToggle('vibrationEnabled', 'Vibration', 'Vibrate device with notifications (mobile devices only)')}
                         </div>
                       </div>
                     </div>
