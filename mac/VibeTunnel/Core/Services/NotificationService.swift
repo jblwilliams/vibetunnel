@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import Observation
 import os.log
 @preconcurrency import UserNotifications
 
@@ -8,6 +9,7 @@ import os.log
 /// Connects to the VibeTunnel server to receive real-time events like session starts,
 /// command completions, and errors, then displays them as native macOS notifications.
 @MainActor
+@Observable
 final class NotificationService: NSObject {
     @MainActor
     static let shared = NotificationService()
@@ -730,9 +732,7 @@ final class NotificationService: NSObject {
     deinit {
         // Note: We can't call disconnect() here because it's @MainActor isolated
         // The cleanup will happen when the EventSource is deallocated
-        eventSource?.disconnect()
-        eventSource = nil
-        NotificationCenter.default.removeObserver(self)
+        // NotificationCenter observers are automatically removed on deinit in modern Swift
     }
 }
 

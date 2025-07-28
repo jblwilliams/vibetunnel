@@ -28,6 +28,7 @@ import type {
 } from '../../shared/types.js';
 import { TitleMode } from '../../shared/types.js';
 import { ProcessTreeAnalyzer } from '../services/process-tree-analyzer.js';
+import type { SessionMonitor } from '../services/session-monitor.js';
 import { ActivityDetector, type ActivityState } from '../utils/activity-detector.js';
 import { TitleSequenceFilter } from '../utils/ansi-title-filter.js';
 import { createLogger } from '../utils/logger.js';
@@ -137,6 +138,7 @@ export class PtyManager extends EventEmitter {
   private processTreeAnalyzer = new ProcessTreeAnalyzer(); // Process tree analysis for bell source identification
   private activityFileWarningsLogged = new Set<string>(); // Track which sessions we've logged warnings for
   private lastWrittenActivityState = new Map<string, string>(); // Track last written activity state to avoid unnecessary writes
+  private sessionMonitor: SessionMonitor | null = null; // Reference to SessionMonitor for notification tracking
 
   // Command tracking for notifications
   private commandTracking = new Map<
@@ -179,6 +181,13 @@ export class PtyManager extends EventEmitter {
         `Cannot load node-pty: ${error instanceof Error ? error.message : String(error)}`
       );
     }
+  }
+
+  /**
+   * Set the SessionMonitor instance for activity tracking
+   */
+  public setSessionMonitor(monitor: SessionMonitor): void {
+    this.sessionMonitor = monitor;
   }
 
   /**
@@ -708,6 +717,11 @@ export class PtyManager extends EventEmitter {
     ptyProcess.onData((data: string) => {
       let processedData = data;
 
+      // Track PTY output in SessionMonitor for activity and bell detection
+      if (this.sessionMonitor) {
+        this.sessionMonitor.trackPtyOutput(session.id, data);
+      }
+
       // If title mode is not NONE, filter out any title sequences the process might
       // have written to the stream.
       if (session.titleMode !== undefined && session.titleMode !== TitleMode.NONE) {
@@ -723,6 +737,16 @@ export class PtyManager extends EventEmitter {
         if (activity.specificStatus?.status !== session.lastActivityStatus) {
           session.lastActivityStatus = activity.specificStatus?.status;
           this.markTitleUpdateNeeded(session);
+
+          // Update SessionMonitor with activity change
+          if (this.sessionMonitor) {
+            const isActive = activity.specificStatus?.status === 'working';
+            this.sessionMonitor.updateSessionActivity(
+              session.id,
+              isActive,
+              activity.specificStatus?.app
+            );
+          }
         }
       }
 
@@ -2455,6 +2479,11 @@ export class PtyManager extends EventEmitter {
       if (commandProc) {
         session.currentCommand = commandProc.command;
         session.commandStartTime = Date.now();
+
+        // Update SessionMonitor with new command
+        if (this.sessionMonitor) {
+          this.sessionMonitor.updateCommand(session.id, commandProc.command);
+        }
 
         // Special logging for Claude commands
         const isClaudeCommand = commandProc.command.toLowerCase().includes('claude');

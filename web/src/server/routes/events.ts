@@ -2,6 +2,7 @@ import { EventEmitter } from 'events';
 import { type Request, type Response, Router } from 'express';
 import { type ServerEvent, ServerEventType } from '../../shared/types.js';
 import type { PtyManager } from '../pty/pty-manager.js';
+import type { SessionMonitor } from '../services/session-monitor.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('events');
@@ -12,7 +13,10 @@ export const serverEventBus = new EventEmitter();
 /**
  * Server-Sent Events (SSE) endpoint for real-time event streaming
  */
-export function createEventsRouter(ptyManager: PtyManager): Router {
+export function createEventsRouter(
+  ptyManager: PtyManager,
+  sessionMonitor?: SessionMonitor
+): Router {
   const router = Router();
 
   // SSE endpoint for event streaming
@@ -47,6 +51,7 @@ export function createEventsRouter(ptyManager: PtyManager): Router {
     let onCommandFinished: (data: CommandFinishedEvent) => void;
     // biome-ignore lint/style/useConst: These are assigned later in the code
     let onClaudeTurn: (sessionId: string, sessionName: string) => void;
+    let onNotification: (event: ServerEvent) => void;
 
     // Cleanup function to remove event listeners
     const cleanup = () => {
@@ -57,6 +62,9 @@ export function createEventsRouter(ptyManager: PtyManager): Router {
       ptyManager.off('sessionExited', onSessionExited);
       ptyManager.off('commandFinished', onCommandFinished);
       ptyManager.off('claudeTurn', onClaudeTurn);
+      if (sessionMonitor) {
+        sessionMonitor.off('notification', onNotification);
+      }
     };
 
     // Send initial connection event
@@ -165,6 +173,26 @@ export function createEventsRouter(ptyManager: PtyManager): Router {
         message: 'Claude has finished responding',
       });
     };
+
+    // Handle SessionMonitor notification events
+    if (sessionMonitor) {
+      onNotification = (event: ServerEvent) => {
+        // SessionMonitor already provides properly formatted ServerEvent objects
+        logger.info(`📢 SessionMonitor notification: ${event.type} for session ${event.sessionId}`);
+
+        // Proper SSE format with id, event, and data fields
+        const sseMessage = `id: ${++eventId}\nevent: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
+
+        try {
+          res.write(sseMessage);
+        } catch (error) {
+          logger.debug('Failed to write SSE event:', error);
+          cleanup();
+        }
+      };
+
+      sessionMonitor.on('notification', onNotification);
+    }
 
     // Subscribe to events
     ptyManager.on('sessionStarted', onSessionStarted);

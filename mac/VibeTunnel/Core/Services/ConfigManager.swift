@@ -47,6 +47,7 @@ final class ConfigManager {
     var notificationClaudeTurn: Bool = false
     var notificationSoundEnabled: Bool = true
     var notificationVibrationEnabled: Bool = true
+    var showInNotificationCenter: Bool = true
 
     // Remote access
     var ngrokEnabled: Bool = false
@@ -107,6 +108,7 @@ final class ConfigManager {
         var claudeTurn: Bool
         var soundEnabled: Bool
         var vibrationEnabled: Bool
+        var showInNotificationCenter: Bool?
     }
 
     private struct RemoteAccessConfig: Codable {
@@ -193,6 +195,9 @@ final class ConfigManager {
                         self.notificationClaudeTurn = notif.claudeTurn
                         self.notificationSoundEnabled = notif.soundEnabled
                         self.notificationVibrationEnabled = notif.vibrationEnabled
+                        if let showInCenter = notif.showInNotificationCenter {
+                            self.showInNotificationCenter = showInCenter
+                        }
                     }
                 }
 
@@ -236,6 +241,7 @@ final class ConfigManager {
         self.notificationClaudeTurn = false
         self.notificationSoundEnabled = true
         self.notificationVibrationEnabled = true
+        self.showInNotificationCenter = true
 
         saveConfiguration()
     }
@@ -281,7 +287,8 @@ final class ConfigManager {
                 bell: notificationBell,
                 claudeTurn: notificationClaudeTurn,
                 soundEnabled: notificationSoundEnabled,
-                vibrationEnabled: notificationVibrationEnabled
+                vibrationEnabled: notificationVibrationEnabled,
+                showInNotificationCenter: showInNotificationCenter
             )
         )
 

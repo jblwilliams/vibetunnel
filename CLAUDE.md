@@ -389,6 +389,23 @@ gh run view <run-id> --log | tail -200 | grep -E "failed|passed|Test results|Sum
 ```
 
 
+## Slash Commands
+
+### /fixmac Command
+
+When the user types `/fixmac`, use the Task tool with the XcodeBuildMCP subagent to fix Mac compilation errors and warnings:
+
+```
+Task(description="Fix Mac build errors", prompt="/fixmac", subagent_type="general-purpose")
+```
+
+The agent will:
+1. Use XcodeBuildMCP tools to identify build errors and warnings
+2. Fix compilation issues in the Mac codebase
+3. Address SwiftFormat violations
+4. Resolve any warning messages
+5. Verify the build succeeds after fixes
+
 ## Key Files Quick Reference
 
 - Architecture Details: `docs/ARCHITECTURE.md`

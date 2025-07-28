@@ -6,8 +6,6 @@ import SwiftUI
 struct GeneralSettingsView: View {
     @AppStorage("autostart")
     private var autostart = false
-    @AppStorage("showNotifications")
-    private var showNotifications = true
     @AppStorage(AppConstants.UserDefaultsKeys.updateChannel)
     private var updateChannelRaw = UpdateChannel.stable.rawValue
     @AppStorage(AppConstants.UserDefaultsKeys.showInDock)
@@ -16,8 +14,10 @@ struct GeneralSettingsView: View {
     private var preventSleepWhenRunning = true
 
     @Environment(ConfigManager.self) private var configManager
+    @Environment(SystemPermissionManager.self) private var permissionManager
 
     @State private var isCheckingForUpdates = false
+    @State private var permissionUpdateTrigger = 0
 
     private let startupManager = StartupManager()
     private let logger = Logger(subsystem: BundleIdentifiers.loggerSubsystem, category: "GeneralSettings")
@@ -26,10 +26,20 @@ struct GeneralSettingsView: View {
         UpdateChannel(rawValue: updateChannelRaw) ?? .stable
     }
 
-    private func updateNotificationPreferences() {
-        // Load current preferences from ConfigManager and notify the service
-        let prefs = NotificationService.NotificationPreferences(fromConfig: configManager)
-        NotificationService.shared.updatePreferences(prefs)
+    // MARK: - Helper Properties
+
+    // IMPORTANT: These computed properties ensure the UI always shows current permission state.
+    // The permissionUpdateTrigger dependency forces SwiftUI to re-evaluate these properties
+    // when permissions change. Without this, the UI would not update when permissions are
+    // granted in System Settings while this view is visible.
+    private var hasAppleScriptPermission: Bool {
+        _ = permissionUpdateTrigger
+        return permissionManager.hasPermission(.appleScript)
+    }
+
+    private var hasAccessibilityPermission: Bool {
+        _ = permissionUpdateTrigger
+        return permissionManager.hasPermission(.accessibility)
     }
 
     var body: some View {
@@ -66,114 +76,6 @@ struct GeneralSettingsView: View {
                         }
                     }
 
-                    // Show Session Notifications
-                    VStack(alignment: .leading, spacing: 4) {
-                        Toggle("Show Session Notifications", isOn: $showNotifications)
-                            .onChange(of: showNotifications) { _, newValue in
-                                // Ensure NotificationService starts/stops based on the toggle
-                                if newValue {
-                                    Task {
-                                        // Request permissions and show test notification
-                                        let granted = await NotificationService.shared
-                                            .requestPermissionAndShowTestNotification()
-
-                                        if granted {
-                                            await NotificationService.shared.start()
-                                        } else {
-                                            // If permission denied, turn toggle back off
-                                            await MainActor.run {
-                                                showNotifications = false
-
-                                                // Show alert explaining the situation
-                                                let alert = NSAlert()
-                                                alert.messageText = "Notification Permission Required"
-                                                alert.informativeText = "VibeTunnel needs permission to show notifications. Please enable notifications for VibeTunnel in System Settings."
-                                                alert.alertStyle = .informational
-                                                alert.addButton(withTitle: "Open System Settings")
-                                                alert.addButton(withTitle: "Cancel")
-
-                                                if alert.runModal() == .alertFirstButtonReturn {
-                                                    // Settings will already be open from the service
-                                                }
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    NotificationService.shared.stop()
-                                }
-                            }
-                        Text("Display native macOS notifications for session and command events.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-                        if showNotifications {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Notify me for:")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .padding(.leading, 20)
-                                    .padding(.top, 4)
-
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Toggle("Session starts", isOn: Binding(
-                                        get: { configManager.notificationSessionStart },
-                                        set: { newValue in
-                                            configManager.notificationSessionStart = newValue
-                                            updateNotificationPreferences()
-                                        }
-                                    ))
-                                    .toggleStyle(.checkbox)
-
-                                    Toggle("Session ends", isOn: Binding(
-                                        get: { configManager.notificationSessionExit },
-                                        set: { newValue in
-                                            configManager.notificationSessionExit = newValue
-                                            updateNotificationPreferences()
-                                        }
-                                    ))
-                                    .toggleStyle(.checkbox)
-
-                                    Toggle("Commands complete (> 3 seconds)", isOn: Binding(
-                                        get: { configManager.notificationCommandCompletion },
-                                        set: { newValue in
-                                            configManager.notificationCommandCompletion = newValue
-                                            updateNotificationPreferences()
-                                        }
-                                    ))
-                                    .toggleStyle(.checkbox)
-
-                                    Toggle("Commands fail", isOn: Binding(
-                                        get: { configManager.notificationCommandError },
-                                        set: { newValue in
-                                            configManager.notificationCommandError = newValue
-                                            updateNotificationPreferences()
-                                        }
-                                    ))
-                                    .toggleStyle(.checkbox)
-
-                                    Toggle("Terminal bell (\u{0007})", isOn: Binding(
-                                        get: { configManager.notificationBell },
-                                        set: { newValue in
-                                            configManager.notificationBell = newValue
-                                            updateNotificationPreferences()
-                                        }
-                                    ))
-                                    .toggleStyle(.checkbox)
-
-                                    Toggle("Claude turn notifications", isOn: Binding(
-                                        get: { configManager.notificationClaudeTurn },
-                                        set: { newValue in
-                                            configManager.notificationClaudeTurn = newValue
-                                            updateNotificationPreferences()
-                                        }
-                                    ))
-                                    .toggleStyle(.checkbox)
-                                }
-                                .padding(.leading, 20)
-                            }
-                        }
-                    }
-
                     // Prevent Sleep
                     VStack(alignment: .leading, spacing: 4) {
                         Toggle("Prevent Sleep When Running", isOn: $preventSleepWhenRunning)
@@ -185,6 +87,13 @@ struct GeneralSettingsView: View {
                     Text("Application")
                         .font(.headline)
                 }
+
+                // System Permissions section (moved from Security)
+                PermissionsSection(
+                    hasAppleScriptPermission: hasAppleScriptPermission,
+                    hasAccessibilityPermission: hasAccessibilityPermission,
+                    permissionManager: permissionManager
+                )
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
@@ -193,6 +102,19 @@ struct GeneralSettingsView: View {
         .task {
             // Sync launch at login status
             autostart = startupManager.isLaunchAtLoginEnabled
+            // Check permissions before first render to avoid UI flashing
+            await permissionManager.checkAllPermissions()
+        }
+        .onAppear {
+            // Register for continuous monitoring
+            permissionManager.registerForMonitoring()
+        }
+        .onDisappear {
+            permissionManager.unregisterFromMonitoring()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .permissionsUpdated)) { _ in
+            // Increment trigger to force computed property re-evaluation
+            permissionUpdateTrigger += 1
         }
     }
 
@@ -240,6 +162,118 @@ struct GeneralSettingsView: View {
         Task {
             try? await Task.sleep(for: .seconds(2))
             isCheckingForUpdates = false
+        }
+    }
+}
+
+// MARK: - Permissions Section
+
+private struct PermissionsSection: View {
+    let hasAppleScriptPermission: Bool
+    let hasAccessibilityPermission: Bool
+    let permissionManager: SystemPermissionManager
+
+    var body: some View {
+        Section {
+            // Automation permission
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Terminal Automation")
+                        .font(.body)
+                    Text("Required to launch and control terminal applications.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                if hasAppleScriptPermission {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Text("Granted")
+                            .foregroundColor(.secondary)
+                    }
+                    .font(.caption)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 2)
+                    .frame(height: 22) // Match small button height
+                    .contextMenu {
+                        Button("Refresh Status") {
+                            permissionManager.forcePermissionRecheck()
+                        }
+                        Button("Open System Settings...") {
+                            permissionManager.requestPermission(.appleScript)
+                        }
+                    }
+                } else {
+                    Button("Grant Permission") {
+                        permissionManager.requestPermission(.appleScript)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+
+            // Accessibility permission
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Accessibility")
+                        .font(.body)
+                    Text("Required to enter terminal startup commands.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                if hasAccessibilityPermission {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Text("Granted")
+                            .foregroundColor(.secondary)
+                    }
+                    .font(.caption)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 2)
+                    .frame(height: 22) // Match small button height
+                    .contextMenu {
+                        Button("Refresh Status") {
+                            permissionManager.forcePermissionRecheck()
+                        }
+                        Button("Open System Settings...") {
+                            permissionManager.requestPermission(.accessibility)
+                        }
+                    }
+                } else {
+                    Button("Grant Permission") {
+                        permissionManager.requestPermission(.accessibility)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+        } header: {
+            Text("System Permissions")
+                .font(.headline)
+        } footer: {
+            if hasAppleScriptPermission && hasAccessibilityPermission {
+                Text(
+                    "All permissions granted. VibeTunnel has full functionality."
+                )
+                .font(.caption)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
+                .foregroundColor(.green)
+            } else {
+                Text(
+                    "Terminals can be captured without permissions, however new sessions won't load."
+                )
+                .font(.caption)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
+            }
         }
     }
 }
