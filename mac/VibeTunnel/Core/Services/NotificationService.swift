@@ -67,6 +67,13 @@ final class NotificationService: NSObject {
     /// Start monitoring server events
     func start() async {
         logger.info("🚀 NotificationService.start() called")
+        
+        // Check if notifications are enabled in config
+        guard configManager.notificationsEnabled else {
+            logger.info("📴 Notifications are disabled in config, skipping SSE connection")
+            return
+        }
+        
         guard serverManager.isRunning else {
             logger.warning("🔴 Server not running, cannot start notification service")
             return

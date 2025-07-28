@@ -94,6 +94,9 @@ export class PushNotificationService {
       // Monitor permission changes
       this.monitorPermissionChanges();
 
+      // Auto-resubscribe if notifications were previously enabled
+      await this.autoResubscribe();
+
       this.initialized = true;
       logger.log('push notification service initialized');
     } catch (error) {
@@ -157,6 +160,38 @@ export class PushNotificationService {
         logger.error('error in subscription change callback:', error);
       }
     });
+  }
+
+  /**
+   * Auto-resubscribe if notifications were previously enabled
+   */
+  private async autoResubscribe(): Promise<void> {
+    try {
+      // Load saved preferences
+      const preferences = await this.loadPreferences();
+
+      // Check if notifications were previously enabled
+      if (preferences.enabled) {
+        // Check if we have permission but no subscription
+        const permission = this.getPermission();
+        if (permission === 'granted' && !this.pushSubscription) {
+          logger.log('Auto-resubscribing to push notifications based on saved preferences');
+
+          // Attempt to resubscribe
+          const subscription = await this.subscribe();
+          if (subscription) {
+            logger.log('Successfully auto-resubscribed to push notifications');
+          } else {
+            logger.warn('Failed to auto-resubscribe, user will need to manually enable');
+            // Update preferences to reflect the failed state
+            preferences.enabled = false;
+            await this.savePreferences(preferences);
+          }
+        }
+      }
+    } catch (error) {
+      logger.error('Error during auto-resubscribe:', error);
+    }
   }
 
   /**
