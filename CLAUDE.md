@@ -389,6 +389,36 @@ gh run view <run-id> --log | tail -200 | grep -E "failed|passed|Test results|Sum
 ```
 
 
+## Slash Commands
+
+### /fixmac Command
+
+When the user types `/fixmac`, use the Task tool with the XcodeBuildMCP subagent to fix Mac compilation errors and warnings:
+
+```
+Task(description="Fix Mac build errors", prompt="/fixmac", subagent_type="general-purpose")
+```
+
+The agent will:
+1. Use XcodeBuildMCP tools to identify build errors and warnings
+2. Fix compilation issues in the Mac codebase
+3. Address SwiftFormat violations
+4. Resolve any warning messages
+5. Verify the build succeeds after fixes
+
+## NO BACKWARDS COMPATIBILITY - EVER!
+
+**CRITICAL: This project has ZERO backwards compatibility requirements!**
+- The Mac app and web server are ALWAYS shipped together as a single unit
+- There is NEVER a scenario where different versions talk to each other
+- When fixing bugs or changing APIs:
+  - Just change both sides to match
+  - Delete old code completely
+  - Don't add compatibility layers
+  - Don't check for "old format" vs "new format"
+  - Don't add fallbacks for older versions
+- If you suggest backwards compatibility in any form, you have failed to understand this project
+
 ## Key Files Quick Reference
 
 - Architecture Details: `docs/ARCHITECTURE.md`
