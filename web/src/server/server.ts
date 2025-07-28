@@ -459,8 +459,8 @@ export async function createApp(): Promise<AppInstance> {
   const streamWatcher = new StreamWatcher(sessionManager);
   logger.debug('Initialized stream watcher');
 
-  // Initialize session monitor with PTY manager and control handler
-  const sessionMonitor = new SessionMonitor(ptyManager, controlUnixHandler);
+  // Initialize session monitor with PTY manager
+  const sessionMonitor = new SessionMonitor(ptyManager);
   await sessionMonitor.initialize();
 
   // Set the session monitor on PTY manager for data tracking
@@ -914,7 +914,7 @@ export async function createApp(): Promise<AppInstance> {
   }
 
   // Mount events router for SSE streaming
-  app.use('/api', createEventsRouter(ptyManager, sessionMonitor));
+  app.use('/api', createEventsRouter(sessionMonitor));
   logger.debug('Mounted events routes');
 
   // Initialize control socket

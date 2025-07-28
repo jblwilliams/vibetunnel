@@ -10,8 +10,7 @@ import { EventEmitter } from 'events';
 import { ServerEventType } from '../../shared/types.js';
 import type { PtyManager } from '../pty/pty-manager.js';
 import { createLogger } from '../utils/logger.js';
-import { createControlEvent, type SessionMonitorEvent } from '../websocket/control-protocol.js';
-import type { ControlUnixHandler } from '../websocket/control-unix-handler.js';
+import type { SessionMonitorEvent } from '../websocket/control-protocol.js';
 
 const logger = createLogger('session-monitor');
 
@@ -69,10 +68,7 @@ export class SessionMonitor extends EventEmitter {
   private commandThresholdMs = MIN_COMMAND_DURATION_MS;
   private claudeIdleTimers = new Map<string, NodeJS.Timeout>();
 
-  constructor(
-    private ptyManager: PtyManager,
-    private controlHandler?: ControlUnixHandler
-  ) {
+  constructor(private ptyManager: PtyManager) {
     super();
     this.setupEventListeners();
     logger.info('SessionMonitor initialized');
@@ -158,10 +154,10 @@ export class SessionMonitor extends EventEmitter {
   }
 
   /**
-   * Emit notification event to both local listeners and Mac app via Unix socket
+   * Emit notification event for all clients (browsers and Mac app) via SSE
    */
   private emitNotificationEvent(event: SessionMonitorEvent) {
-    // Emit locally for web clients (via SSE)
+    // Emit notification for all clients via SSE endpoint
     this.emit('notification', {
       type: this.mapActionToServerEventType(event.type),
       sessionId: event.sessionId,
@@ -172,13 +168,6 @@ export class SessionMonitor extends EventEmitter {
       duration: event.duration,
       message: event.type === 'claude-turn' ? 'Claude has finished responding' : undefined,
     });
-
-    // Send to Mac via Unix socket
-    if (this.controlHandler?.isMacAppConnected()) {
-      const message = createControlEvent('session-monitor', event.type, event);
-      this.controlHandler.sendToMac(message);
-      logger.debug(`Sent ${event.type} notification to Mac app via Unix socket`);
-    }
   }
 
   /**

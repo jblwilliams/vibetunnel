@@ -414,7 +414,7 @@ final class NotificationService: NSObject {
             return
         }
 
-        guard let url = URL(string: "http://localhost:\(serverManager.port)/events") else {
+        guard let url = URL(string: "http://localhost:\(serverManager.port)/api/events") else {
             logger.error("Invalid events URL")
             return
         }
