@@ -15,6 +15,7 @@ enum ControlProtocol {
         case git
         case system
         case notification
+        case sessionMonitor = "session-monitor"
     }
 
     // MARK: - Base message for runtime dispatch

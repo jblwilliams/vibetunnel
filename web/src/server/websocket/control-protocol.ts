@@ -3,7 +3,7 @@
  */
 
 export type ControlMessageType = 'request' | 'response' | 'event';
-export type ControlCategory = 'terminal' | 'git' | 'system' | 'notification';
+export type ControlCategory = 'terminal' | 'git' | 'system' | 'notification' | 'session-monitor';
 
 export interface ControlMessage {
   id: string;
@@ -50,6 +50,31 @@ export interface SystemPingRequest {
 export interface SystemPingResponse {
   status: string;
   timestamp: number;
+}
+
+// Session monitor event types
+export type SessionMonitorAction =
+  | 'session-start'
+  | 'session-exit'
+  | 'command-finished'
+  | 'command-error'
+  | 'bell'
+  | 'claude-turn';
+
+export interface SessionMonitorEvent {
+  type: SessionMonitorAction;
+  sessionId: string;
+  sessionName: string;
+  timestamp: string;
+
+  // Event-specific fields
+  exitCode?: number;
+  command?: string;
+  duration?: number;
+  activityStatus?: {
+    isActive: boolean;
+    app?: string;
+  };
 }
 
 // Helper to create control messages

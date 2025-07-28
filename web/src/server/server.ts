@@ -38,6 +38,7 @@ import { HQClient } from './services/hq-client.js';
 import { mdnsService } from './services/mdns-service.js';
 import { PushNotificationService } from './services/push-notification-service.js';
 import { RemoteRegistry } from './services/remote-registry.js';
+import { SessionMonitor } from './services/session-monitor.js';
 import { StreamWatcher } from './services/stream-watcher.js';
 import { TerminalManager } from './services/terminal-manager.js';
 import { closeLogger, createLogger, initLogger, setDebugMode } from './utils/logger.js';
@@ -457,6 +458,14 @@ export async function createApp(): Promise<AppInstance> {
   // Initialize stream watcher for file-based streaming
   const streamWatcher = new StreamWatcher(sessionManager);
   logger.debug('Initialized stream watcher');
+
+  // Initialize session monitor with PTY manager and control handler
+  const sessionMonitor = new SessionMonitor(ptyManager, controlUnixHandler);
+  await sessionMonitor.initialize();
+
+  // Set the session monitor on PTY manager for data tracking
+  ptyManager.setSessionMonitor(sessionMonitor);
+  logger.debug('Initialized session monitor');
 
   // Initialize activity monitor
   const activityMonitor = new ActivityMonitor(CONTROL_DIR);
@@ -905,7 +914,7 @@ export async function createApp(): Promise<AppInstance> {
   }
 
   // Mount events router for SSE streaming
-  app.use('/api', createEventsRouter(ptyManager));
+  app.use('/api', createEventsRouter(ptyManager, sessionMonitor));
   logger.debug('Mounted events routes');
 
   // Initialize control socket

@@ -18,13 +18,19 @@ final class NotificationControlHandler {
     // MARK: - Initialization
 
     private init() {
-        // Register handler with the shared socket manager
+        // Register handler with the shared socket manager for notification category
         SharedUnixSocketManager.shared.registerControlHandler(for: .notification) { [weak self] data in
             _ = await self?.handleMessage(data)
             return nil // No response needed for notifications
         }
+        
+        // Also register for session-monitor category
+        SharedUnixSocketManager.shared.registerControlHandler(for: .sessionMonitor) { [weak self] data in
+            _ = await self?.handleSessionMonitorMessage(data)
+            return nil // No response needed for events
+        }
 
-        logger.info("NotificationControlHandler initialized")
+        logger.info("NotificationControlHandler initialized for notification and session-monitor categories")
     }
 
     // MARK: - Message Handling
@@ -89,6 +95,104 @@ final class NotificationControlHandler {
             logger.warning("Unknown event type '\(typeString ?? "nil")' - ignoring notification request")
         }
 
+        return nil
+    }
+    
+    // MARK: - Session Monitor Message Handling
+    
+    private func handleSessionMonitorMessage(_ data: Data) async -> Data? {
+        do {
+            // Decode the control message
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let action = json["action"] as? String,
+               let payload = json["payload"] as? [String: Any]
+            {
+                logger.debug("Received session-monitor event: \(action)")
+                
+                // Check if notifications are enabled
+                guard ConfigManager.shared.notificationsEnabled else {
+                    logger.debug("Notifications disabled, ignoring session-monitor event")
+                    return nil
+                }
+                
+                // Map action to notification preference check
+                let shouldNotify = switch action {
+                case "session-start": ConfigManager.shared.notificationSessionStart
+                case "session-exit": ConfigManager.shared.notificationSessionExit
+                case "command-finished": ConfigManager.shared.notificationCommandCompletion
+                case "command-error": ConfigManager.shared.notificationCommandError
+                case "bell": ConfigManager.shared.notificationBell
+                case "claude-turn": ConfigManager.shared.notificationClaudeTurn
+                default: false
+                }
+                
+                guard shouldNotify else {
+                    logger.debug("Notification type \(action) disabled by user preference")
+                    return nil
+                }
+                
+                // Extract common fields
+                let sessionId = payload["sessionId"] as? String
+                let sessionName = payload["sessionName"] as? String ?? "Session"
+                let timestamp = payload["timestamp"] as? String
+                
+                // Map to ServerEventType
+                let eventType: ServerEventType? = switch action {
+                case "session-start": .sessionStart
+                case "session-exit": .sessionExit
+                case "command-finished": .commandFinished
+                case "command-error": .commandError
+                case "bell": .bell
+                case "claude-turn": .claudeTurn
+                default: nil
+                }
+                
+                guard let eventType else {
+                    logger.warning("Unknown session-monitor action: \(action)")
+                    return nil
+                }
+                
+                // Extract event-specific fields
+                let exitCode = payload["exitCode"] as? Int
+                let command = payload["command"] as? String
+                let duration = payload["duration"] as? Int
+                
+                // Create message based on event type
+                let message: String? = switch eventType {
+                case .claudeTurn: "Claude has finished responding"
+                default: nil
+                }
+                
+                // Parse timestamp if provided, otherwise use current date
+                let eventDate: Date
+                if let timestamp {
+                    let formatter = ISO8601DateFormatter()
+                    eventDate = formatter.date(from: timestamp) ?? Date()
+                } else {
+                    eventDate = Date()
+                }
+                
+                // Create ServerEvent
+                let serverEvent = ServerEvent(
+                    type: eventType,
+                    sessionId: sessionId,
+                    sessionName: sessionName,
+                    command: command,
+                    exitCode: exitCode,
+                    duration: duration,
+                    message: message,
+                    timestamp: eventDate
+                )
+                
+                // Send notification
+                await notificationService.sendNotification(for: serverEvent)
+                
+                logger.info("Processed session-monitor event: \(action) for session: \(sessionName)")
+            }
+        } catch {
+            logger.error("Failed to decode session-monitor message: \(error)")
+        }
+        
         return nil
     }
 }
