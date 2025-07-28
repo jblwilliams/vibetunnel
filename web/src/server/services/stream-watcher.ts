@@ -10,6 +10,7 @@ import {
   findLastPrunePoint,
   logPruningDetection,
 } from '../utils/pruning-detector.js';
+import { gitWatcher } from './git-watcher.js';
 
 const logger = createLogger('stream-watcher');
 
@@ -217,9 +218,15 @@ export class StreamWatcher {
 
       // Start watching for new content
       this.startWatching(sessionId, streamPath, watcherInfo);
+
+      // Start git watching if this is a git repository
+      this.startGitWatching(sessionId, response);
     } else {
       // Send existing content to new client
       this.sendExistingContent(sessionId, streamPath, client);
+
+      // Add this client to git watcher
+      gitWatcher.addClient(sessionId, response);
     }
 
     // Add client to set
@@ -256,6 +263,9 @@ export class StreamWatcher {
         )
       );
 
+      // Remove client from git watcher
+      gitWatcher.removeClient(sessionId, response);
+
       // If no more clients, stop watching
       if (watcherInfo.clients.size === 0) {
         logger.log(chalk.yellow(`stopping watcher for session ${sessionId} (no clients)`));
@@ -263,6 +273,9 @@ export class StreamWatcher {
           watcherInfo.watcher.close();
         }
         this.activeWatchers.delete(sessionId);
+
+        // Stop git watching when no clients remain
+        gitWatcher.stopWatching(sessionId);
       }
     }
   }
@@ -612,6 +625,22 @@ export class StreamWatcher {
   }
 
   /**
+   * Start git watching for a session if it's in a git repository
+   */
+  private async startGitWatching(sessionId: string, response: Response): Promise<void> {
+    try {
+      const sessionInfo = this.sessionManager.loadSessionInfo(sessionId);
+      if (sessionInfo?.gitRepoPath && sessionInfo.workingDir) {
+        logger.debug(`Starting git watcher for session ${sessionId} at ${sessionInfo.gitRepoPath}`);
+        await gitWatcher.startWatching(sessionId, sessionInfo.workingDir, sessionInfo.gitRepoPath);
+        gitWatcher.addClient(sessionId, response);
+      }
+    } catch (error) {
+      logger.error(`Failed to start git watching for session ${sessionId}:`, error);
+    }
+  }
+
+  /**
    * Clean up all watchers and listeners
    */
   private cleanup(): void {
@@ -626,5 +655,7 @@ export class StreamWatcher {
       }
       this.activeWatchers.clear();
     }
+    // Clean up git watchers
+    gitWatcher.cleanup();
   }
 }

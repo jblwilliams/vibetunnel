@@ -18,6 +18,7 @@ export interface StreamConnection {
   disconnect: () => void;
   errorHandler?: EventListener;
   sessionExitHandler?: EventListener;
+  sessionUpdateHandler?: EventListener;
 }
 
 export class ConnectionManager {
@@ -87,6 +88,38 @@ export class ConnectionManager {
 
     this.terminal.addEventListener('session-exit', handleSessionExit);
 
+    // Listen for session-update events from SSE (git status updates)
+    const handleSessionUpdate = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        logger.debug('Received session-update event:', data);
+
+        if (
+          data.type === 'git-status-update' &&
+          this.session &&
+          data.sessionId === this.session.id
+        ) {
+          // Update session with new git status
+          const updatedSession = {
+            ...this.session,
+            gitModifiedCount: data.gitModifiedCount,
+            gitUntrackedCount: data.gitUntrackedCount,
+            gitStagedCount: data.gitStagedCount,
+            gitAheadCount: data.gitAheadCount,
+            gitBehindCount: data.gitBehindCount,
+          };
+
+          this.session = updatedSession;
+          this.onSessionUpdate(updatedSession);
+        }
+      } catch (error) {
+        logger.error('Failed to parse session-update event:', error);
+      }
+    };
+
+    // Add named event listener for session-update events
+    connection.eventSource.addEventListener('session-update', handleSessionUpdate);
+
     // Wrap the connection to track reconnections
     const originalEventSource = connection.eventSource;
     let lastErrorTime = 0;
@@ -134,6 +167,7 @@ export class ConnectionManager {
       ...connection,
       errorHandler: handleError as EventListener,
       sessionExitHandler: handleSessionExit as EventListener,
+      sessionUpdateHandler: handleSessionUpdate as EventListener,
     };
   }
 
@@ -144,6 +178,14 @@ export class ConnectionManager {
       // Remove session-exit event listener if it exists
       if (this.streamConnection.sessionExitHandler && this.terminal) {
         this.terminal.removeEventListener('session-exit', this.streamConnection.sessionExitHandler);
+      }
+
+      // Remove session-update event listener if it exists
+      if (this.streamConnection.sessionUpdateHandler && this.streamConnection.eventSource) {
+        this.streamConnection.eventSource.removeEventListener(
+          'session-update',
+          this.streamConnection.sessionUpdateHandler
+        );
       }
 
       this.streamConnection.disconnect();

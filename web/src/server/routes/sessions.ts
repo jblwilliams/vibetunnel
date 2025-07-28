@@ -12,6 +12,7 @@ import type { RemoteRegistry } from '../services/remote-registry.js';
 import type { StreamWatcher } from '../services/stream-watcher.js';
 import type { TerminalManager } from '../services/terminal-manager.js';
 import { detectGitInfo } from '../utils/git-info.js';
+import { getDetailedGitStatus } from '../utils/git-status.js';
 import { createLogger } from '../utils/logger.js';
 import { resolveAbsolutePath } from '../utils/path-utils.js';
 import { generateSessionName } from '../utils/session-naming.js';
@@ -19,7 +20,7 @@ import { createControlMessage, type TerminalSpawnResponse } from '../websocket/c
 import { controlUnixHandler } from '../websocket/control-unix-handler.js';
 
 const logger = createLogger('sessions');
-const execFile = promisify(require('child_process').execFile);
+const _execFile = promisify(require('child_process').execFile);
 
 interface SessionRoutesConfig {
   ptyManager: PtyManager;
@@ -439,93 +440,6 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
       res.status(500).json({ error: 'Failed to get activity status' });
     }
   });
-
-  /**
-   * Get detailed git status including file counts
-   */
-  async function getDetailedGitStatus(workingDir: string) {
-    try {
-      const { stdout: statusOutput } = await execFile(
-        'git',
-        ['status', '--porcelain=v1', '--branch'],
-        {
-          cwd: workingDir,
-          timeout: 5000,
-          env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
-        }
-      );
-
-      const lines = statusOutput.trim().split('\n');
-      const branchLine = lines[0];
-
-      let aheadCount = 0;
-      let behindCount = 0;
-      let modifiedCount = 0;
-      let untrackedCount = 0;
-      let stagedCount = 0;
-      let deletedCount = 0;
-
-      // Parse branch line for ahead/behind info
-      if (branchLine?.startsWith('##')) {
-        const aheadMatch = branchLine.match(/\[ahead (\d+)/);
-        const behindMatch = branchLine.match(/behind (\d+)/);
-
-        if (aheadMatch) {
-          aheadCount = Number.parseInt(aheadMatch[1], 10);
-        }
-        if (behindMatch) {
-          behindCount = Number.parseInt(behindMatch[1], 10);
-        }
-      }
-
-      // Process status lines (skip the branch line)
-      const statusLines = lines.slice(1);
-
-      for (const line of statusLines) {
-        if (line.length < 2) continue;
-
-        const indexStatus = line[0];
-        const workTreeStatus = line[1];
-
-        // Staged changes
-        if (indexStatus !== ' ' && indexStatus !== '?') {
-          stagedCount++;
-        }
-
-        // Working tree changes
-        if (workTreeStatus === 'M') {
-          modifiedCount++;
-        } else if (workTreeStatus === 'D' && indexStatus === ' ') {
-          // Deleted in working tree but not staged
-          deletedCount++;
-        }
-
-        // Untracked files
-        if (indexStatus === '?' && workTreeStatus === '?') {
-          untrackedCount++;
-        }
-      }
-
-      return {
-        modified: modifiedCount,
-        untracked: untrackedCount,
-        added: stagedCount,
-        deleted: deletedCount,
-        ahead: aheadCount,
-        behind: behindCount,
-      };
-    } catch (error) {
-      logger.debug(`Could not get detailed git status: ${error}`);
-      return {
-        modified: 0,
-        untracked: 0,
-        added: 0,
-        deleted: 0,
-        ahead: 0,
-        behind: 0,
-      };
-    }
-  }
 
   // Get git status for a specific session
   router.get('/sessions/:sessionId/git-status', async (req, res) => {

@@ -5,7 +5,7 @@
  * Shows counts for modified, untracked, staged files, and ahead/behind commits.
  */
 import { html, LitElement } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { customElement, property } from 'lit/decorators.js';
 import type { Session } from '../../shared/types.js';
 
 @customElement('git-status-badge')
@@ -17,47 +17,6 @@ export class GitStatusBadge extends LitElement {
 
   @property({ type: Object }) session: Session | null = null;
   @property({ type: Boolean }) detailed = false; // Show detailed breakdown
-  @property({ type: Number }) pollInterval = 5000; // Poll every 5 seconds
-
-  @state() private _isPolling = false;
-  @state() private _gitModifiedCount = 0;
-  @state() private _gitUntrackedCount = 0;
-  @state() private _gitStagedCount = 0;
-  @state() private _gitAheadCount = 0;
-  @state() private _gitBehindCount = 0;
-
-  private _pollTimer?: number;
-  private _visibilityHandler?: () => void;
-
-  connectedCallback() {
-    super.connectedCallback();
-
-    // Set up visibility change listener
-    this._visibilityHandler = () => {
-      if (!document.hidden) {
-        this._startPolling();
-      } else {
-        this._stopPolling();
-      }
-    };
-
-    document.addEventListener('visibilitychange', this._visibilityHandler);
-
-    // Start polling if page is visible and we have a session
-    if (!document.hidden && this.session?.id) {
-      this._startPolling();
-    }
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-
-    // Clean up
-    this._stopPolling();
-    if (this._visibilityHandler) {
-      document.removeEventListener('visibilitychange', this._visibilityHandler);
-    }
-  }
 
   updated(changedProperties: Map<string, unknown>) {
     super.updated(changedProperties);
@@ -75,75 +34,6 @@ export class GitStatusBadge extends LitElement {
           newId: this.session?.id,
         });
       }
-
-      // Initialize internal state from session
-      if (this.session) {
-        this._gitModifiedCount = this.session.gitModifiedCount ?? 0;
-        this._gitUntrackedCount = this.session.gitUntrackedCount ?? 0;
-        this._gitStagedCount = this.session.gitStagedCount ?? 0;
-        this._gitAheadCount = this.session.gitAheadCount ?? 0;
-        this._gitBehindCount = this.session.gitBehindCount ?? 0;
-      }
-
-      if (this.session?.id && !document.hidden) {
-        this._startPolling();
-      } else {
-        this._stopPolling();
-      }
-    }
-
-    // Handle poll interval changes
-    if (changedProperties.has('pollInterval') && this._isPolling) {
-      this._stopPolling();
-      this._startPolling();
-    }
-  }
-
-  private async _startPolling() {
-    if (this._isPolling || !this.session?.id) return;
-
-    this._isPolling = true;
-
-    // Initial fetch
-    await this._updateGitStatus();
-
-    // Set up periodic polling
-    this._pollTimer = window.setInterval(() => {
-      if (!document.hidden && this.session?.id) {
-        this._updateGitStatus();
-      }
-    }, this.pollInterval);
-  }
-
-  private _stopPolling() {
-    this._isPolling = false;
-
-    if (this._pollTimer) {
-      window.clearInterval(this._pollTimer);
-      this._pollTimer = undefined;
-    }
-  }
-
-  private async _updateGitStatus() {
-    if (!this.session?.id) return;
-
-    try {
-      const response = await fetch(`/api/sessions/${this.session.id}/git-status`);
-      if (!response.ok) return;
-
-      const status = await response.json();
-
-      // Update internal state instead of modifying the session object
-      this._gitModifiedCount = status.modified || 0;
-      this._gitUntrackedCount = status.untracked || 0;
-      this._gitStagedCount = status.added || 0;
-      this._gitAheadCount = status.ahead || 0;
-      this._gitBehindCount = status.behind || 0;
-
-      // State updates will trigger re-render automatically
-    } catch (error) {
-      // Silently ignore errors to avoid disrupting the UI
-      console.debug('Failed to update git status:', error);
     }
   }
 
@@ -155,9 +45,12 @@ export class GitStatusBadge extends LitElement {
     }
 
     const _hasLocalChanges =
-      this._gitModifiedCount > 0 || this._gitUntrackedCount > 0 || this._gitStagedCount > 0;
+      (this.session?.gitModifiedCount ?? 0) > 0 ||
+      (this.session?.gitUntrackedCount ?? 0) > 0 ||
+      (this.session?.gitStagedCount ?? 0) > 0;
 
-    const _hasRemoteChanges = this._gitAheadCount > 0 || this._gitBehindCount > 0;
+    const _hasRemoteChanges =
+      (this.session?.gitAheadCount ?? 0) > 0 || (this.session?.gitBehindCount ?? 0) > 0;
 
     // Always show the badge when in a Git repository
     // Even if there are no changes, users want to see the branch name
@@ -186,9 +79,9 @@ export class GitStatusBadge extends LitElement {
   private renderLocalChanges() {
     if (!this.session) return null;
 
-    const modifiedCount = this._gitModifiedCount;
-    const untrackedCount = this._gitUntrackedCount;
-    const stagedCount = this._gitStagedCount;
+    const modifiedCount = this.session?.gitModifiedCount ?? 0;
+    const untrackedCount = this.session?.gitUntrackedCount ?? 0;
+    const stagedCount = this.session?.gitStagedCount ?? 0;
     const totalChanges = modifiedCount + untrackedCount + stagedCount;
 
     if (totalChanges === 0 && !this.detailed) return null;
@@ -239,8 +132,8 @@ export class GitStatusBadge extends LitElement {
   private renderRemoteChanges() {
     if (!this.session) return null;
 
-    const aheadCount = this._gitAheadCount;
-    const behindCount = this._gitBehindCount;
+    const aheadCount = this.session?.gitAheadCount ?? 0;
+    const behindCount = this.session?.gitBehindCount ?? 0;
 
     if (aheadCount === 0 && behindCount === 0) return null;
 
