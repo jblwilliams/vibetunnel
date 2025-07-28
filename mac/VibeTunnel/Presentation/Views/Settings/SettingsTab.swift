@@ -6,10 +6,10 @@ import Foundation
 /// with associated display names and SF Symbol icons for the tab bar.
 enum SettingsTab: String, CaseIterable {
     case general
+    case notifications
     case quickStart
     case dashboard
     case remoteAccess
-    case securityPermissions
     case advanced
     case debug
     case about
@@ -17,10 +17,10 @@ enum SettingsTab: String, CaseIterable {
     var displayName: String {
         switch self {
         case .general: "General"
+        case .notifications: "Notifications"
         case .quickStart: "Quick Start"
         case .dashboard: "Dashboard"
         case .remoteAccess: "Remote"
-        case .securityPermissions: "Security"
         case .advanced: "Advanced"
         case .debug: "Debug"
         case .about: "About"
@@ -30,10 +30,10 @@ enum SettingsTab: String, CaseIterable {
     var icon: String {
         switch self {
         case .general: "gear"
+        case .notifications: "bell.badge"
         case .quickStart: "bolt.fill"
         case .dashboard: "server.rack"
         case .remoteAccess: "network"
-        case .securityPermissions: "lock.shield"
         case .advanced: "gearshape.2"
         case .debug: "hammer"
         case .about: "info.circle"

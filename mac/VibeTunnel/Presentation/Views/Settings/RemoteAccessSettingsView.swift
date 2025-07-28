@@ -12,6 +12,10 @@ struct RemoteAccessSettingsView: View {
     private var serverPort = "4020"
     @AppStorage(AppConstants.UserDefaultsKeys.dashboardAccessMode)
     private var accessModeString = AppConstants.Defaults.dashboardAccessMode
+    @AppStorage(AppConstants.UserDefaultsKeys.authenticationMode)
+    private var authModeString = "os"
+
+    @State private var authMode: AuthenticationMode = .osAuth
 
     @Environment(NgrokService.self)
     private var ngrokService
@@ -43,6 +47,14 @@ struct RemoteAccessSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                // Authentication section (moved from Security)
+                AuthenticationSection(
+                    authMode: $authMode,
+                    enableSSHKeys: .constant(authMode == .sshKeys || authMode == .both),
+                    logger: logger,
+                    serverManager: serverManager
+                )
+
                 TailscaleIntegrationSection(
                     tailscaleService: tailscaleService,
                     serverPort: serverPort,
@@ -78,6 +90,9 @@ struct RemoteAccessSettingsView: View {
             .onAppear {
                 onAppearSetup()
                 updateLocalIPAddress()
+                // Initialize authentication mode from stored value
+                let storedMode = UserDefaults.standard.string(forKey: AppConstants.UserDefaultsKeys.authenticationMode) ?? "os"
+                authMode = AuthenticationMode(rawValue: storedMode) ?? .osAuth
             }
         }
         .alert("ngrok Authentication Required", isPresented: $showingAuthTokenAlert) {

@@ -27,6 +27,7 @@ struct VibeTunnelApp: App {
     @State var sessionService: SessionService?
     @State var worktreeService = WorktreeService(serverManager: ServerManager.shared)
     @State var configManager = ConfigManager.shared
+    @State var notificationService = NotificationService.shared
 
     init() {
         // Connect the app delegate to this app instance
@@ -57,6 +58,7 @@ struct VibeTunnelApp: App {
                 .environment(repositoryDiscoveryService)
                 .environment(configManager)
                 .environment(worktreeService)
+                .environment(notificationService)
         }
         .windowResizability(.contentSize)
         .defaultSize(width: 580, height: 480)
@@ -83,6 +85,7 @@ struct VibeTunnelApp: App {
                         sessionMonitor: sessionMonitor
                     ))
                     .environment(worktreeService)
+                    .environment(notificationService)
             } else {
                 Text("Session not found")
                     .frame(width: 400, height: 300)
@@ -109,6 +112,7 @@ struct VibeTunnelApp: App {
                     sessionMonitor: sessionMonitor
                 ))
                 .environment(worktreeService)
+                .environment(notificationService)
         }
         .commands {
             CommandGroup(after: .appInfo) {
