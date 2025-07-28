@@ -862,6 +862,35 @@ VIBETUNNEL_DEBUG=1 vt your-command
 
 Debug logs are written to `~/.vibetunnel/log.txt`.
 
+### Using Development Builds with vt
+
+When developing VibeTunnel, you can use the `VIBETUNNEL_PREFER_DERIVED_DATA` environment variable to make the `vt` command prefer development builds from Xcode's DerivedData folder:
+
+```bash
+# Enable DerivedData preference
+export VIBETUNNEL_PREFER_DERIVED_DATA=1
+
+# vt will now search for and use the latest VibeTunnel build from DerivedData
+vt your-command
+```
+
+When this environment variable is set, `vt` will:
+1. First search for VibeTunnel builds in `~/Library/Developer/Xcode/DerivedData`
+2. Use the most recently modified build found there
+3. Fall back to `/Applications/VibeTunnel.app` if no DerivedData build exists
+4. Log the exact binary location, version, and build timestamp being used
+
+This is particularly useful for:
+- Testing changes without installing to `/Applications`
+- Working with multiple VibeTunnel builds simultaneously
+- Quickly switching between development and production versions
+- Debugging which version of VibeTunnel is being used
+
+The version information is also:
+- Stored in `session.json` for each session
+- Displayed in `vt status` output
+- Shown in the initial log output when `VIBETUNNEL_PREFER_DERIVED_DATA` is set
+
 ### Verbosity Control
 
 Control the amount of output from VibeTunnel commands:

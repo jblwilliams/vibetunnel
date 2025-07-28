@@ -20,28 +20,47 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     # Get the real path of this script to avoid infinite recursion
     SCRIPT_REAL_PATH="$(resolve_symlink_macos "${BASH_SOURCE[0]}")"
 
-    # Comprehensive Mac app search - try standard locations first, then development locations
+    # Comprehensive Mac app search - order depends on VIBETUNNEL_PREFER_DERIVED_DATA
     APP_PATH=""
     
-    # First try standard locations with valid binary check
-    for TRY_PATH in "/Applications/VibeTunnel.app" "$HOME/Applications/VibeTunnel.app"; do
-        if [ -d "$TRY_PATH" ] && [ -f "$TRY_PATH/Contents/Resources/vibetunnel" ]; then
-            VT_SCRIPT="$TRY_PATH/Contents/Resources/vt"
-            if [ -f "$VT_SCRIPT" ] && [ -x "$VT_SCRIPT" ]; then
-                # Avoid infinite recursion by checking if this is the same script
-                VT_REAL_PATH="$(resolve_symlink_macos "$VT_SCRIPT")"
-                if [ "$SCRIPT_REAL_PATH" != "$VT_REAL_PATH" ]; then
-                    exec "$VT_SCRIPT" "$@"
+    if [ -n "$VIBETUNNEL_PREFER_DERIVED_DATA" ]; then
+        # When preference is set, try DerivedData first
+        for CANDIDATE in $(find ~/Library/Developer/Xcode/DerivedData -name "VibeTunnel.app" -type d 2>/dev/null | grep -v "\.dSYM" | grep -v "Index\.noindex" | sort -r); do
+            if [ -f "$CANDIDATE/Contents/Resources/vibetunnel" ]; then
+                VT_SCRIPT="$CANDIDATE/Contents/Resources/vt"
+                if [ -f "$VT_SCRIPT" ] && [ -x "$VT_SCRIPT" ]; then
+                    VT_REAL_PATH="$(resolve_symlink_macos "$VT_SCRIPT")"
+                    if [ "$SCRIPT_REAL_PATH" != "$VT_REAL_PATH" ]; then
+                        exec "$VT_SCRIPT" "$@"
+                    fi
                 fi
+                APP_PATH="$CANDIDATE"
+                break
             fi
-            APP_PATH="$TRY_PATH"
-            break
-        fi
-    done
+        done
+    fi
     
-    # If not found in standard locations, search for development builds
+    # If not found yet, try standard locations
     if [ -z "$APP_PATH" ]; then
-        # First try DerivedData (for development)
+        for TRY_PATH in "/Applications/VibeTunnel.app" "$HOME/Applications/VibeTunnel.app"; do
+            if [ -d "$TRY_PATH" ] && [ -f "$TRY_PATH/Contents/Resources/vibetunnel" ]; then
+                VT_SCRIPT="$TRY_PATH/Contents/Resources/vt"
+                if [ -f "$VT_SCRIPT" ] && [ -x "$VT_SCRIPT" ]; then
+                    # Avoid infinite recursion by checking if this is the same script
+                    VT_REAL_PATH="$(resolve_symlink_macos "$VT_SCRIPT")"
+                    if [ "$SCRIPT_REAL_PATH" != "$VT_REAL_PATH" ]; then
+                        exec "$VT_SCRIPT" "$@"
+                    fi
+                fi
+                APP_PATH="$TRY_PATH"
+                break
+            fi
+        done
+    fi
+    
+    # If not found in standard locations and VIBETUNNEL_PREFER_DERIVED_DATA wasn't set, search development builds
+    if [ -z "$APP_PATH" ] && [ -z "$VIBETUNNEL_PREFER_DERIVED_DATA" ]; then
+        # Try DerivedData (for development)
         for CANDIDATE in $(find ~/Library/Developer/Xcode/DerivedData -name "VibeTunnel.app" -type d 2>/dev/null | grep -v "\.dSYM" | grep -v "Index\.noindex"); do
             if [ -f "$CANDIDATE/Contents/Resources/vibetunnel" ]; then
                 VT_SCRIPT="$CANDIDATE/Contents/Resources/vt"
@@ -102,6 +121,23 @@ if [ -z "$VIBETUNNEL_BIN" ]; then
         echo "Error: vibetunnel binary not found. Please ensure vibetunnel is installed." >&2
         echo "Install with: npm install -g vibetunnel" >&2
         exit 1
+    fi
+fi
+
+# Log VibeTunnel binary info when VIBETUNNEL_PREFER_DERIVED_DATA is set
+if [ -n "$VIBETUNNEL_PREFER_DERIVED_DATA" ] && [ -n "$VIBETUNNEL_BIN" ]; then
+    # Get version and build info
+    VERSION_OUTPUT=$("$VIBETUNNEL_BIN" --version 2>&1)
+    VERSION_LINE=$(echo "$VERSION_OUTPUT" | grep "^VibeTunnel Server" | head -n 1)
+    BUILD_LINE=$(echo "$VERSION_OUTPUT" | grep "^Built:" | head -n 1)
+    
+    # Always log this info regardless of verbosity level
+    echo "[VibeTunnel] Using binary: $VIBETUNNEL_BIN"
+    if [ -n "$VERSION_LINE" ]; then
+        echo "[VibeTunnel] Version: ${VERSION_LINE#VibeTunnel Server }"
+    fi
+    if [ -n "$BUILD_LINE" ]; then
+        echo "[VibeTunnel] ${BUILD_LINE}"
     fi
 fi
 

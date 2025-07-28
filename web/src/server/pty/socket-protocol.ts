@@ -90,6 +90,8 @@ export interface StatusResponse {
   running: boolean;
   port?: number;
   url?: string;
+  version?: string;
+  buildDate?: string;
   followMode?: {
     enabled: boolean;
     branch?: string;

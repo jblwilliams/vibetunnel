@@ -23,6 +23,7 @@ import { createGitError } from './utils/git-error.js';
 import { areHooksInstalled, installGitHooks, uninstallGitHooks } from './utils/git-hooks.js';
 import { createLogger } from './utils/logger.js';
 import { prettifyPath } from './utils/path-prettify.js';
+import { BUILD_DATE, VERSION } from './version.js';
 import { createControlEvent } from './websocket/control-protocol.js';
 import { controlUnixHandler } from './websocket/control-unix-handler.js';
 
@@ -255,6 +256,8 @@ export class ApiSocketServer {
         running: true,
         port: this.serverPort,
         url: this.serverUrl,
+        version: VERSION,
+        buildDate: BUILD_DATE,
         followMode,
       };
 
