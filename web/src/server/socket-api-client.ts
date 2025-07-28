@@ -12,6 +12,7 @@ import {
   type GitEventNotify,
   type GitFollowRequest,
   type GitFollowResponse,
+  type MessagePayload,
   MessageType,
 } from './pty/socket-protocol.js';
 import { createLogger } from './utils/logger.js';
@@ -52,9 +53,9 @@ export class SocketApiClient {
   /**
    * Send a request and wait for response
    */
-  private async sendRequest<TRequest, TResponse>(
-    type: MessageType,
-    payload: TRequest,
+  private async sendRequest<TRequest extends MessageType, TResponse>(
+    type: TRequest,
+    payload: MessagePayload<TRequest>,
     responseType: MessageType,
     timeout = 5000
   ): Promise<TResponse> {
@@ -64,106 +65,18 @@ export class SocketApiClient {
 
     const client = new VibeTunnelSocketClient(this.controlSocketPath);
 
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        client.disconnect();
-        reject(new Error('Request timeout'));
-      }, timeout);
-
-      let responseReceived = false;
-
-      client.on('error', (error) => {
-        clearTimeout(timer);
-        if (!responseReceived) {
-          reject(error);
-        }
-      });
-
-      // Handle the specific response type we're expecting
-      const handleMessage = (msgType: MessageType, data: unknown) => {
-        if (msgType === responseType) {
-          responseReceived = true;
-          clearTimeout(timer);
-          client.disconnect();
-          resolve(data as TResponse);
-        } else if (msgType === MessageType.ERROR) {
-          responseReceived = true;
-          clearTimeout(timer);
-          client.disconnect();
-          reject(new Error((data as { message?: string }).message || 'Server error'));
-        }
-      };
-
-      // Override the handleMessage method to intercept messages
-      (client as unknown as { handleMessage: typeof handleMessage }).handleMessage = handleMessage;
-
-      client
-        .connect()
-        .then(() => {
-          // Send the request
-          let message: unknown;
-          switch (type) {
-            case MessageType.STATUS_REQUEST:
-              message = (client as unknown as { send: (msg: unknown) => unknown }).send(
-                (
-                  client as unknown as {
-                    constructor: {
-                      prototype: {
-                        constructor: {
-                          MessageBuilder: Record<string, (...args: unknown[]) => unknown>;
-                        };
-                      };
-                    };
-                  }
-                ).constructor.prototype.constructor.MessageBuilder.statusRequest()
-              );
-              break;
-            case MessageType.GIT_FOLLOW_REQUEST:
-              message = (client as unknown as { send: (msg: unknown) => unknown }).send(
-                (
-                  client as unknown as {
-                    constructor: {
-                      prototype: {
-                        constructor: {
-                          MessageBuilder: Record<string, (...args: unknown[]) => unknown>;
-                        };
-                      };
-                    };
-                  }
-                ).constructor.prototype.constructor.MessageBuilder.gitFollowRequest(payload)
-              );
-              break;
-            case MessageType.GIT_EVENT_NOTIFY:
-              message = (client as unknown as { send: (msg: unknown) => unknown }).send(
-                (
-                  client as unknown as {
-                    constructor: {
-                      prototype: {
-                        constructor: {
-                          MessageBuilder: Record<string, (...args: unknown[]) => unknown>;
-                        };
-                      };
-                    };
-                  }
-                ).constructor.prototype.constructor.MessageBuilder.gitEventNotify(payload)
-              );
-              break;
-            default:
-              clearTimeout(timer);
-              reject(new Error(`Unsupported message type: ${type}`));
-              return;
-          }
-
-          if (!message) {
-            clearTimeout(timer);
-            reject(new Error('Failed to send request'));
-          }
-        })
-        .catch((error) => {
-          clearTimeout(timer);
-          reject(error);
-        });
-    });
+    try {
+      await client.connect();
+      const response = await client.sendMessageWithResponse(type, payload, responseType, timeout);
+      return response as TResponse;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('ENOENT')) {
+        throw new Error('VibeTunnel server is not running');
+      }
+      throw error;
+    } finally {
+      client.disconnect();
+    }
   }
 
   /**
@@ -176,7 +89,7 @@ export class SocketApiClient {
 
     try {
       // Send STATUS_REQUEST and wait for STATUS_RESPONSE
-      const response = await this.sendRequest<Record<string, never>, ServerStatus>(
+      const response = await this.sendRequest<MessageType.STATUS_REQUEST, ServerStatus>(
         MessageType.STATUS_REQUEST,
         {},
         MessageType.STATUS_RESPONSE
@@ -192,7 +105,7 @@ export class SocketApiClient {
    * Enable or disable Git follow mode
    */
   async setFollowMode(request: GitFollowRequest): Promise<GitFollowResponse> {
-    return this.sendRequest<GitFollowRequest, GitFollowResponse>(
+    return this.sendRequest<MessageType.GIT_FOLLOW_REQUEST, GitFollowResponse>(
       MessageType.GIT_FOLLOW_REQUEST,
       request,
       MessageType.GIT_FOLLOW_RESPONSE
@@ -203,7 +116,7 @@ export class SocketApiClient {
    * Send Git event notification
    */
   async sendGitEvent(event: GitEventNotify): Promise<GitEventAck> {
-    return this.sendRequest<GitEventNotify, GitEventAck>(
+    return this.sendRequest<MessageType.GIT_EVENT_NOTIFY, GitEventAck>(
       MessageType.GIT_EVENT_NOTIFY,
       event,
       MessageType.GIT_EVENT_ACK

@@ -6,12 +6,20 @@ import { EventEmitter } from 'events';
 import * as net from 'net';
 import { createLogger } from '../utils/logger.js';
 import {
+  type ControlCommand,
   type ErrorMessage,
+  frameMessage,
+  type GitEventNotify,
+  type GitFollowRequest,
+  type KillCommand,
   MessageBuilder,
   MessageParser,
+  type MessagePayload,
   MessageType,
   parsePayload,
+  type ResizeCommand,
   type StatusUpdate,
+  type UpdateTitleCommand,
 } from './socket-protocol.js';
 
 const logger = createLogger('socket-client');
@@ -20,8 +28,8 @@ export interface SocketClientEvents {
   connect: () => void;
   disconnect: (error?: Error) => void;
   error: (error: Error) => void;
-  status: (status: StatusUpdate) => void;
-  serverError: (error: ErrorMessage) => void;
+  // Message-specific events are emitted using MessageType enum names
+  // e.g., 'STATUS_UPDATE', 'ERROR', 'HEARTBEAT', etc.
 }
 
 /**
@@ -156,23 +164,14 @@ export class VibeTunnelSocketClient extends EventEmitter {
     try {
       const data = parsePayload(type, payload);
 
-      switch (type) {
-        case MessageType.STATUS_UPDATE:
-          this.emit('status', data as StatusUpdate);
-          break;
+      // Emit event with message type enum name
+      this.emit(MessageType[type], data);
 
-        case MessageType.ERROR:
-          this.emit('serverError', data as ErrorMessage);
-          break;
-
-        case MessageType.HEARTBEAT:
-          this.lastHeartbeat = Date.now();
-          // Echo heartbeat back
-          this.sendHeartbeat();
-          break;
-
-        default:
-          logger.debug(`Received unexpected message type: ${type}`);
+      // Handle heartbeat
+      if (type === MessageType.HEARTBEAT) {
+        this.lastHeartbeat = Date.now();
+        // Echo heartbeat back
+        this.sendHeartbeat();
       }
     } catch (error) {
       logger.error('Failed to parse message:', error);
@@ -259,6 +258,104 @@ export class VibeTunnelSocketClient extends EventEmitter {
    */
   sendStatus(app: string, status: string, extra?: Record<string, unknown>): boolean {
     return this.send(MessageBuilder.status(app, status, extra));
+  }
+
+  /**
+   * Send a message with type-safe payload
+   */
+  public sendMessage<T extends MessageType>(type: T, payload: MessagePayload<T>): boolean {
+    const message = this.buildMessage(type, payload);
+    return this.send(message);
+  }
+
+  /**
+   * Send a message and wait for a response
+   */
+  public async sendMessageWithResponse<TRequest extends MessageType, TResponse extends MessageType>(
+    requestType: TRequest,
+    payload: MessagePayload<TRequest>,
+    responseType: TResponse,
+    timeout = 5000
+  ): Promise<MessagePayload<TResponse>> {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.off(MessageType[responseType], handleResponse);
+        this.off('error', handleError);
+        reject(new Error(`Request timeout waiting for ${MessageType[responseType]}`));
+      }, timeout);
+
+      const handleResponse = (data: MessagePayload<TResponse>) => {
+        clearTimeout(timer);
+        this.off('error', handleError);
+        resolve(data);
+      };
+
+      const handleError = (error: Error | ErrorMessage) => {
+        clearTimeout(timer);
+        this.off(MessageType[responseType], handleResponse);
+        if ('message' in error) {
+          reject(new Error(error.message));
+        } else {
+          reject(error);
+        }
+      };
+
+      // Listen for response
+      this.once(MessageType[responseType], handleResponse);
+      this.once('error', handleError);
+
+      const sent = this.sendMessage(requestType, payload);
+      if (!sent) {
+        clearTimeout(timer);
+        this.off(MessageType[responseType], handleResponse);
+        this.off('error', handleError);
+        reject(new Error('Failed to send message'));
+      }
+    });
+  }
+
+  /**
+   * Build a message buffer from type and payload
+   */
+  private buildMessage<T extends MessageType>(type: T, payload: MessagePayload<T>): Buffer {
+    switch (type) {
+      case MessageType.STDIN_DATA:
+        return MessageBuilder.stdin(payload as string);
+      case MessageType.CONTROL_CMD: {
+        const cmd = payload as ControlCommand;
+        switch (cmd.cmd) {
+          case 'resize':
+            return MessageBuilder.resize((cmd as ResizeCommand).cols, (cmd as ResizeCommand).rows);
+          case 'kill':
+            return MessageBuilder.kill((cmd as KillCommand).signal);
+          case 'reset-size':
+            return MessageBuilder.resetSize();
+          case 'update-title':
+            return MessageBuilder.updateTitle((cmd as UpdateTitleCommand).title);
+          default:
+            // For generic control commands, use frameMessage directly
+            return frameMessage(MessageType.CONTROL_CMD, cmd);
+        }
+      }
+      case MessageType.STATUS_UPDATE: {
+        const statusPayload = payload as StatusUpdate;
+        return MessageBuilder.status(
+          statusPayload.app,
+          statusPayload.status,
+          statusPayload.extra as Record<string, unknown> | undefined
+        );
+      }
+      case MessageType.HEARTBEAT:
+        return MessageBuilder.heartbeat();
+      case MessageType.STATUS_REQUEST:
+        return MessageBuilder.statusRequest();
+      case MessageType.GIT_FOLLOW_REQUEST:
+        return MessageBuilder.gitFollowRequest(payload as GitFollowRequest);
+      case MessageType.GIT_EVENT_NOTIFY:
+        return MessageBuilder.gitEventNotify(payload as GitEventNotify);
+      default:
+        throw new Error(`Unsupported message type: ${type}`);
+    }
   }
 
   /**

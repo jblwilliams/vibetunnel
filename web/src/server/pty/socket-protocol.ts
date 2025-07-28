@@ -137,6 +137,30 @@ export interface GitEventAck {
 }
 
 /**
+ * Type-safe mapping of message types to their payload types
+ */
+export type MessagePayloadMap = {
+  [MessageType.STDIN_DATA]: string;
+  [MessageType.CONTROL_CMD]: ControlCommand;
+  [MessageType.STATUS_UPDATE]: StatusUpdate;
+  [MessageType.HEARTBEAT]: Record<string, never>;
+  [MessageType.ERROR]: ErrorMessage;
+  [MessageType.STATUS_REQUEST]: StatusRequest;
+  [MessageType.STATUS_RESPONSE]: StatusResponse;
+  [MessageType.GIT_FOLLOW_REQUEST]: GitFollowRequest;
+  [MessageType.GIT_FOLLOW_RESPONSE]: GitFollowResponse;
+  [MessageType.GIT_EVENT_NOTIFY]: GitEventNotify;
+  [MessageType.GIT_EVENT_ACK]: GitEventAck;
+};
+
+/**
+ * Get the payload type for a given message type
+ */
+export type MessagePayload<T extends MessageType> = T extends keyof MessagePayloadMap
+  ? MessagePayloadMap[T]
+  : never;
+
+/**
  * Frame a message for transmission
  */
 export function frameMessage(type: MessageType, payload: Buffer | string | object): Buffer {

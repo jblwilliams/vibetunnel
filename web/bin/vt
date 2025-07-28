@@ -141,6 +141,13 @@ if [ -n "$VIBETUNNEL_PREFER_DERIVED_DATA" ] && [ -n "$VIBETUNNEL_BIN" ]; then
     fi
 fi
 
+# Handle safe commands first that work both inside and outside sessions
+# This must come BEFORE the session check to avoid the recursive session error
+if [[ "$1" == "status" || "$1" == "version" || "$1" == "--version" ]]; then
+    # These commands can run safely inside or outside a session
+    exec "$VIBETUNNEL_BIN" "$@"
+fi
+
 # Check if we're already inside a VibeTunnel session
 if [ -n "$VIBETUNNEL_SESSION_ID" ]; then
     # Special case: handle 'vt title' command inside a session
@@ -159,6 +166,7 @@ if [ -n "$VIBETUNNEL_SESSION_ID" ]; then
         exit 1
     fi
     
+    # For all other commands, block recursive sessions
     echo "Error: Already inside a VibeTunnel session (ID: $VIBETUNNEL_SESSION_ID). Recursive VibeTunnel sessions are not supported." >&2
     echo "If you need to run commands, use them directly without the 'vt' prefix." >&2
     exit 1
@@ -365,17 +373,12 @@ if [[ $# -eq 0 || "$1" == "--help" || "$1" == "-h" ]]; then
     exit 0
 fi
 
+
 # Handle 'vt title' command when not inside a session
 if [[ "$1" == "title" ]]; then
     echo "Error: 'vt title' can only be used inside a VibeTunnel session." >&2
     echo "Start a session first with 'vt' or 'vt <command>'" >&2
     exit 1
-fi
-
-# Handle 'vt status' command
-if [[ "$1" == "status" ]]; then
-    # Use vibetunnel CLI to show status via socket
-    exec "$VIBETUNNEL_BIN" status
 fi
 
 # Handle 'vt follow' command
