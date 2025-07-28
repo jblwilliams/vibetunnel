@@ -1489,7 +1489,10 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 
 /* Position keyboard button */
 .keyboard-button {
-  @apply fixed bottom-3 right-3 z-50;
+  @apply fixed z-50;
+  /* Account for safe areas on mobile devices */
+  bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  right: calc(0.75rem + env(safe-area-inset-right, 0px));
   /* Ensure button is always touchable */
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;

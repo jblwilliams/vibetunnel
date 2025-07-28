@@ -418,7 +418,6 @@ The agent will:
   - Don't check for "old format" vs "new format"
   - Don't add fallbacks for older versions
 - If you suggest backwards compatibility in any form, you have failed to understand this project
-
 ## Key Files Quick Reference
 
 - Architecture Details: `docs/ARCHITECTURE.md`
