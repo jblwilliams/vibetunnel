@@ -121,6 +121,7 @@ final class EventSource: NSObject {
                     }
 
                     // Dispatch event
+                    logger.debug("🎯 Dispatching event - type: \(event.event ?? "default"), data: \(event.data ?? "none")")
                     DispatchQueue.main.async {
                         self.onMessage?(event)
                     }
@@ -201,8 +202,12 @@ extension EventSource: URLSessionDataDelegate {
     }
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
-        guard let text = String(data: data, encoding: .utf8) else { return }
+        guard let text = String(data: data, encoding: .utf8) else { 
+            logger.error("Failed to decode data as UTF-8")
+            return 
+        }
 
+        logger.debug("📨 EventSource received data: \(text)")
         buffer += text
         processBuffer()
     }

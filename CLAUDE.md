@@ -282,12 +282,18 @@ VibeTunnel includes a powerful log viewing utility for debugging and monitoring:
 
 **Common usage**:
 ```bash
-./scripts/vtlog.sh -f              # Follow logs in real-time
+# View recent logs (RECOMMENDED for debugging):
 ./scripts/vtlog.sh -n 200           # Show last 200 lines
+./scripts/vtlog.sh -n 500 -s "error" # Search last 500 lines for "error"
 ./scripts/vtlog.sh -e               # Show only errors
 ./scripts/vtlog.sh -c ServerManager # Show logs from specific component
 ./scripts/vtlog.sh --server -e      # Show server errors
+
+# Follow logs in real-time (AVOID in Claude Code - causes timeouts):
+./scripts/vtlog.sh -f              # Follow logs in real-time - DO NOT USE for checking existing logs
 ```
+
+**Important for Claude Code**: Always use `-n` to check a specific number of recent log lines. Do NOT use `-f` (follow mode) as it will block and timeout after 2 minutes. Follow mode is only useful when monitoring logs in a separate terminal while performing actions.
 
 **Log prefixes**:
 - `[FE]` - Frontend (browser) logs

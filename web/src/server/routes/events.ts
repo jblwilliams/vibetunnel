@@ -40,9 +40,9 @@ export function createEventsRouter(sessionMonitor?: SessionMonitor): Router {
       }
     };
 
-    // Send initial connection event
+    // Send initial connection event as default message event
     try {
-      res.write('event: connected\ndata: {"type": "connected"}\n\n');
+      res.write('data: {"type": "connected"}\n\n');
     } catch (error) {
       logger.debug('Failed to send initial connection event:', error);
       return;
@@ -69,8 +69,9 @@ export function createEventsRouter(sessionMonitor?: SessionMonitor): Router {
           logger.info('🧪 Forwarding test notification through SSE:', event);
         }
 
-        // Proper SSE format with id, event, and data fields
-        const sseMessage = `id: ${++eventId}\nevent: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
+        // Send as default message event (not named event) for compatibility with Mac EventSource
+        // The event type is already included in the data payload
+        const sseMessage = `id: ${++eventId}\ndata: ${JSON.stringify(event)}\n\n`;
 
         try {
           res.write(sseMessage);

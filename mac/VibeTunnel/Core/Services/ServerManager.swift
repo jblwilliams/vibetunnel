@@ -65,6 +65,11 @@ class ServerManager {
         bunServer?.localToken
     }
 
+    /// The current authentication mode of the server
+    var authMode: String {
+        bunServer?.authMode ?? "os"
+    }
+
     var bindAddress: String {
         get {
             // Get the raw value from UserDefaults, defaulting to the app default
@@ -309,8 +314,7 @@ class ServerManager {
 
         isRunning = false
 
-        // Post notification that server state has changed
-        NotificationCenter.default.post(name: .serverStateChanged, object: nil)
+        // Notification service connection is now handled explicitly via start() method
 
         // Clear the auth token from SessionMonitor
         SessionMonitor.shared.setLocalAuthToken(nil)

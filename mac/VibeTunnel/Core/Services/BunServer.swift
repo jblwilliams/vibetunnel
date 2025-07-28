@@ -72,6 +72,11 @@ final class BunServer {
         return localAuthToken
     }
 
+    /// Get the current authentication mode
+    var authMode: String {
+        AuthConfig.current().mode
+    }
+
     // MARK: - Initialization
 
     init() {
