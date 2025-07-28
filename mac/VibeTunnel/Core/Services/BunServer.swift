@@ -47,6 +47,11 @@ final class BunServer {
 
     var bindAddress: String = "127.0.0.1"
 
+    /// The process identifier of the running server, if available
+    var processIdentifier: Int32? {
+        process?.processIdentifier
+    }
+
     /// Local authentication token for bypassing auth on localhost
     private let localAuthToken: String = {
         // Generate a secure random token for this session

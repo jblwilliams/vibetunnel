@@ -216,6 +216,13 @@ private struct ServerStatusSection: View {
                                 .font(.system(.body, design: .monospaced))
                         }
                     }
+
+                    if let pid = serverManager.serverProcessId {
+                        LabeledContent("Process ID") {
+                            Text("\(pid)")
+                                .font(.system(.body, design: .monospaced))
+                        }
+                    }
                 }
 
                 Divider()

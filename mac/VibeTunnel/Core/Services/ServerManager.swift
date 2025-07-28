@@ -101,6 +101,11 @@ class ServerManager {
     private(set) var isRestarting = false
     private(set) var lastError: Error?
 
+    /// The process ID of the running server, if available
+    var serverProcessId: Int32? {
+        bunServer?.processIdentifier
+    }
+
     /// Track if we're in the middle of handling a crash to prevent multiple restarts
     private var isHandlingCrash = false
     /// Number of consecutive crashes for backoff
