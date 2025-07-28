@@ -270,6 +270,7 @@ export class GitWatcher {
         gitModifiedCount: status.modified,
         gitUntrackedCount: status.untracked,
         gitStagedCount: status.staged,
+        gitDeletedCount: status.deleted,
         gitAheadCount: status.ahead,
         gitBehindCount: status.behind,
       };
