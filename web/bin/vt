@@ -150,7 +150,7 @@ if [ -n "$VIBETUNNEL_PREFER_DERIVED_DATA" ] && [ -n "$VIBETUNNEL_BIN" ]; then
     # Shorten path by removing /Contents/Resources/vibetunnel suffix
     DISPLAY_PATH=$(prettify_path "$VIBETUNNEL_BIN")
     DISPLAY_PATH=${DISPLAY_PATH%/Contents/Resources/vibetunnel}
-    echo -e "${GRAY}[VibeTunnel] Using binary: ${DISPLAY_PATH}${RESET}"
+    echo -e "${GRAY}[VibeTunnel] ${DISPLAY_PATH}${RESET}"
     if [ -n "$VERSION_LINE" ] && [ -n "$BUILD_LINE" ]; then
         echo -e "${GRAY}[VibeTunnel] Version: ${VERSION_LINE#VibeTunnel Server } (${BUILD_LINE})${RESET}"
     elif [ -n "$VERSION_LINE" ]; then
