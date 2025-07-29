@@ -131,13 +131,16 @@ if [ -n "$VIBETUNNEL_PREFER_DERIVED_DATA" ] && [ -n "$VIBETUNNEL_BIN" ]; then
     VERSION_LINE=$(echo "$VERSION_OUTPUT" | grep "^VibeTunnel Server" | head -n 1)
     BUILD_LINE=$(echo "$VERSION_OUTPUT" | grep "^Built:" | head -n 1)
     
+    # Gray color (bright black)
+    GRAY='\033[90m'
+    RESET='\033[0m'
+    
     # Always log this info regardless of verbosity level
-    echo "[VibeTunnel] Using binary: $VIBETUNNEL_BIN"
-    if [ -n "$VERSION_LINE" ]; then
-        echo "[VibeTunnel] Version: ${VERSION_LINE#VibeTunnel Server }"
-    fi
-    if [ -n "$BUILD_LINE" ]; then
-        echo "[VibeTunnel] ${BUILD_LINE}"
+    echo -e "${GRAY}[VibeTunnel] Using binary: $(prettify_path "$VIBETUNNEL_BIN")${RESET}"
+    if [ -n "$VERSION_LINE" ] && [ -n "$BUILD_LINE" ]; then
+        echo -e "${GRAY}[VibeTunnel] Version: ${VERSION_LINE#VibeTunnel Server } (${BUILD_LINE})${RESET}"
+    elif [ -n "$VERSION_LINE" ]; then
+        echo -e "${GRAY}[VibeTunnel] Version: ${VERSION_LINE#VibeTunnel Server }${RESET}"
     fi
 fi
 
