@@ -1,6 +1,17 @@
 #!/bin/bash
 # Unified VibeTunnel CLI wrapper - compatible with both Mac app and npm installations
 
+# Function to convert absolute paths to use ~
+prettify_path() {
+    local path="$1"
+    local home="$HOME"
+    if [[ "$path" == "$home"* ]]; then
+        echo "~${path#$home}"
+    else
+        echo "$path"
+    fi
+}
+
 # Only check for Mac app on macOS
 if [[ "$OSTYPE" == "darwin"* ]]; then
     # macOS symlink resolution function using BSD readlink
@@ -190,17 +201,6 @@ json_escape() {
     str="${str//$'\r'/\\r}"
     str="${str//$'\t'/\\t}"
     printf '%s' "$str"
-}
-
-# Function to convert absolute paths to use ~
-prettify_path() {
-    local path="$1"
-    local home="$HOME"
-    if [[ "$path" == "$home"* ]]; then
-        echo "~${path#$home}"
-    else
-        echo "$path"
-    fi
 }
 
 # Function to show help
