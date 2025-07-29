@@ -147,7 +147,10 @@ if [ -n "$VIBETUNNEL_PREFER_DERIVED_DATA" ] && [ -n "$VIBETUNNEL_BIN" ]; then
     RESET='\033[0m'
     
     # Always log this info regardless of verbosity level
-    echo -e "${GRAY}[VibeTunnel] Using binary: $(prettify_path "$VIBETUNNEL_BIN")${RESET}"
+    # Shorten path by removing /Contents/Resources/vibetunnel suffix
+    DISPLAY_PATH=$(prettify_path "$VIBETUNNEL_BIN")
+    DISPLAY_PATH=${DISPLAY_PATH%/Contents/Resources/vibetunnel}
+    echo -e "${GRAY}[VibeTunnel] Using binary: ${DISPLAY_PATH}${RESET}"
     if [ -n "$VERSION_LINE" ] && [ -n "$BUILD_LINE" ]; then
         echo -e "${GRAY}[VibeTunnel] Version: ${VERSION_LINE#VibeTunnel Server } (${BUILD_LINE})${RESET}"
     elif [ -n "$VERSION_LINE" ]; then
