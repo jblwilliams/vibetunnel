@@ -75,21 +75,7 @@
                         </dict>
                     </dict>
                 </dict>
-                <!-- iOS app (main bundle ID) -->
-                <key>sh.vibetunnel.vibetunnel-mobile</key>
-                <dict>
-                    <key>DEFAULT-OPTIONS</key>
-                    <dict>
-                        <key>Level</key>
-                        <dict>
-                            <key>Enable</key>
-                            <string>Debug</string>
-                            <key>Persist</key>
-                            <string>Debug</string>
-                        </dict>
-                    </dict>
-                </dict>
-                <!-- iOS app (alternative bundle ID) -->
+                <!-- iOS app -->
                 <key>sh.vibetunnel.ios</key>
                 <dict>
                     <key>DEFAULT-OPTIONS</key>

@@ -69,8 +69,7 @@ The profile configures logging for all VibeTunnel subsystems:
 - `sh.vibetunnel.vibetunnel.tests.debug` - Debug test builds
 
 ### iOS
-- `sh.vibetunnel.vibetunnel-mobile` - Main iOS app bundle ID
-- `sh.vibetunnel.ios` - Alternative iOS bundle ID (used in services)
+- `sh.vibetunnel.ios` - Main iOS app and all components
 - `sh.vibetunnel.ios.tests` - iOS test suite
 
 All subsystems are configured to:
