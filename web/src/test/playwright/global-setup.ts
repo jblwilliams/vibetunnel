@@ -15,11 +15,11 @@ async function globalSetup(config: FullConfig) {
     fs.mkdirSync(screenshotDir, { recursive: true });
   }
 
-  // Optional: Launch browser to ensure it's installed
-  if (process.env.CI) {
+  // Skip browser verification in local dev for faster startup
+  if (process.env.CI && process.env.VERIFY_BROWSER !== 'false') {
     console.log('Running in CI - verifying browser installation...');
     try {
-      const browser = await chromium.launch();
+      const browser = await chromium.launch({ headless: true });
       await browser.close();
       console.log('Browser verification successful');
     } catch (error) {
@@ -41,11 +41,11 @@ async function globalSetup(config: FullConfig) {
     try {
       await page.goto(process.env.PLAYWRIGHT_TEST_BASE_URL || testConfig.baseURL, {
         waitUntil: 'domcontentloaded',
-        timeout: 30000,
+        timeout: 15000,
       });
 
-      // Wait for app to load
-      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 10000 });
+      // Wait for app to load with reduced timeout
+      await page.waitForSelector('vibetunnel-app', { state: 'attached', timeout: 5000 });
 
       // Check if we have sessions
       const sessions = await page.evaluate(async () => {

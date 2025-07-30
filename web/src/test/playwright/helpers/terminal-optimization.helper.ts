@@ -8,32 +8,13 @@ import type { Page } from '@playwright/test';
  * Wait for terminal to be ready with optimized checks
  */
 export async function waitForTerminalReady(page: Page, timeout = 10000): Promise<void> {
-  // First, wait for the terminal element
+  // First, wait for the terminal element - reduced timeout
   await page.waitForSelector('vibe-terminal', {
     state: 'attached',
-    timeout,
+    timeout: Math.min(timeout, 5000),
   });
 
-  // Wait for WebSocket connection OR for terminal to initialize (for in-memory sessions)
-  const wsConnectedPromise = page.evaluate(() => {
-    return new Promise<boolean>((resolve) => {
-      // Check if WebSocket is already connected
-      const vibeTerminal = document.querySelector('vibe-terminal') as HTMLElement & {
-        wsConnected?: boolean;
-        isConnected?: boolean;
-      };
-      if (vibeTerminal?.wsConnected || vibeTerminal?.isConnected) {
-        resolve(true);
-        return;
-      }
-
-      // Wait a bit for WebSocket, but don't fail if it doesn't connect
-      // (in-memory sessions might not use WebSocket)
-      setTimeout(() => resolve(false), 3000);
-    });
-  });
-
-  // Wait for terminal to be interactive - either shows a prompt or has content
+  // Combine all checks into one efficient waitForFunction
   await page.waitForFunction(
     () => {
       const term = document.querySelector('vibe-terminal');
@@ -43,29 +24,18 @@ export async function waitForTerminalReady(page: Page, timeout = 10000): Promise
       const container = term.querySelector('#terminal-container, .terminal-container, .xterm');
       if (!container) return false;
 
-      // Terminal is ready if it has any content (even just cursor)
-      const hasContent = container.textContent && container.textContent.length > 0;
-
-      // Or if xterm.js terminal is initialized
+      // Check for xterm.js terminal initialization
       const hasXterm = container.querySelector('.xterm-screen, .xterm-viewport') !== null;
+      if (hasXterm) return true;
 
-      return hasContent || hasXterm;
+      // Check for content with prompt
+      const content = container.textContent || '';
+      return (
+        content.length > 0 &&
+        (content.includes('$') || content.includes('#') || content.includes('>'))
+      );
     },
-    { timeout, polling: 100 }
-  );
-
-  // Wait for WebSocket result (but don't fail)
-  await wsConnectedPromise;
-
-  // Wait for shell prompt to appear
-  await page.waitForFunction(
-    () => {
-      const term = document.querySelector('vibe-terminal');
-      const content = term?.textContent || '';
-      // Look for common shell prompt indicators
-      return content.includes('$') || content.includes('#') || content.includes('>');
-    },
-    { timeout }
+    { timeout, polling: 50 } // Reduced polling interval for faster detection
   );
 }
 

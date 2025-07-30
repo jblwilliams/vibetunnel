@@ -39,8 +39,8 @@ export default defineConfig({
     // This ensures test groups run sequentially, preventing session conflicts
     return process.env.CI ? 1 : undefined;
   })(),
-  /* Test timeout */
-  timeout: process.env.CI ? 30 * 1000 : 15 * 1000, // 30s on CI, 15s locally
+  /* Test timeout - reduced for faster failure detection */
+  timeout: process.env.CI ? 20 * 1000 : 10 * 1000, // 20s on CI, 10s locally
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html', { open: 'never' }],
@@ -60,11 +60,11 @@ export default defineConfig({
     /* Capture video on failure */
     video: process.env.CI ? 'retain-on-failure' : 'off',
 
-    /* Maximum time each action can take */
-    actionTimeout: process.env.CI ? 10000 : 5000, // 10s on CI, 5s locally
+    /* Maximum time each action can take - reduced for faster feedback */
+    actionTimeout: process.env.CI ? 5000 : 3000, // 5s on CI, 3s locally
 
-    /* Navigation timeout */
-    navigationTimeout: process.env.CI ? 15000 : 10000, // 15s on CI, 10s locally
+    /* Navigation timeout - reduced for faster page load detection */
+    navigationTimeout: process.env.CI ? 10000 : 5000, // 10s on CI, 5s locally
 
     /* Run in headless mode for better performance */
     headless: true,
@@ -82,6 +82,15 @@ export default defineConfig({
         '--disable-features=IsolateOrigins,site-per-process',
         '--disable-dev-shm-usage',
         '--no-sandbox',
+        '--disable-blink-features=AutomationControlled',
+        '--disable-extensions',
+        '--disable-plugins',
+        '--disable-images', // Don't load images for faster tests
+        '--disable-javascript-harmony-shipping',
+        '--disable-background-timer-throttling',
+        '--disable-renderer-backgrounding',
+        '--disable-features=TranslateUI',
+        '--disable-ipc-flooding-protection',
       ],
     },
   },
@@ -134,9 +143,9 @@ export default defineConfig({
     command: `node scripts/test-server.js --no-auth --port ${testConfig.port}`, // Use test server script
     port: testConfig.port,
     reuseExistingServer: !process.env.CI, // Reuse server locally for faster test runs
-    stdout: process.env.CI ? 'inherit' : 'pipe', // Show output in CI for debugging
+    stdout: process.env.CI ? 'inherit' : 'ignore', // Reduce noise locally
     stderr: process.env.CI ? 'inherit' : 'pipe', // Show errors in CI for debugging
-    timeout: 30 * 1000, // 30 seconds for server startup
+    timeout: 20 * 1000, // 20 seconds for server startup - reduced for faster feedback
     cwd: process.cwd(), // Ensure we're in the right directory
     env: (() => {
       const env = { ...process.env };

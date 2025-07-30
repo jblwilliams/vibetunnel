@@ -8,32 +8,26 @@ import type { Page } from '@playwright/test';
  * Wait for app initialization - optimized for speed
  */
 export async function waitForAppReady(page: Page): Promise<void> {
-  // Wait for app element
+  // Wait for app element - reduced timeout
   await page.waitForSelector('vibetunnel-app', {
     state: 'attached',
-    timeout: process.env.CI ? 5000 : 3000,
+    timeout: process.env.CI ? 3000 : 2000,
   });
 
-  // Quick check if we're in auth or no-auth mode
-  const hasCreateButton = await page
-    .locator('[data-testid="create-session-button"]')
-    .isVisible({ timeout: 100 })
-    .catch(() => false);
-  const hasAuthForm = await page
-    .locator('auth-login')
-    .isVisible({ timeout: 100 })
-    .catch(() => false);
-
-  if (!hasCreateButton && !hasAuthForm) {
-    // Wait a bit more for one of them to appear
-    await page
-      .waitForSelector('[data-testid="create-session-button"], auth-login', {
+  // Use Promise.race for faster element detection
+  try {
+    await Promise.race([
+      page.waitForSelector('[data-testid="create-session-button"]', {
         state: 'visible',
-        timeout: process.env.CI ? 5000 : 2000,
-      })
-      .catch(() => {
-        // If neither appears, that's okay - let individual tests handle it
-      });
+        timeout: process.env.CI ? 3000 : 1500,
+      }),
+      page.waitForSelector('auth-login', {
+        state: 'visible',
+        timeout: process.env.CI ? 3000 : 1500,
+      }),
+    ]);
+  } catch {
+    // If neither appears quickly, that's okay - let individual tests handle it
   }
 }
 
@@ -75,19 +69,21 @@ export async function quickCreateSession(
   const createButton = page.locator('[data-testid="create-session-button"]');
   await createButton.click();
 
-  // Wait for form to be ready
+  // Wait for form to be ready - reduced timeout
   await page.waitForSelector('session-create-form[visible="true"]', {
-    timeout: process.env.CI ? 5000 : 2000,
+    timeout: process.env.CI ? 3000 : 1500,
   });
 
-  // Fill name
+  // Fill name and submit in one go for speed
   const nameInput = page.locator('input[placeholder*="Session name"]');
   await nameInput.fill(name);
 
   // Set spawn window if needed
   if (spawnWindow) {
     const spawnToggle = page.locator('[data-testid="spawn-window-toggle"]');
-    if (await spawnToggle.isVisible({ timeout: 500 })) {
+    // Don't wait if not visible
+    const isVisible = await spawnToggle.isVisible({ timeout: 100 });
+    if (isVisible) {
       await spawnToggle.click();
     }
   }
@@ -95,10 +91,10 @@ export async function quickCreateSession(
   // Submit form
   await page.keyboard.press('Enter');
 
-  // For web sessions, wait for navigation
+  // For web sessions, wait for navigation with reduced timeout
   if (!spawnWindow) {
     try {
-      await page.waitForURL(/\/session\//, { timeout: process.env.CI ? 5000 : 3000 });
+      await page.waitForURL(/\/session\//, { timeout: process.env.CI ? 3000 : 2000 });
       const match = page.url().match(/\/session\/([^/?]+)/);
       return match ? match[1] : null;
     } catch {

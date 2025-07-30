@@ -405,22 +405,39 @@ build_mac_proj(
 
 ### Running macOS Tests
 
-**IMPORTANT**: macOS tests MUST be run using XcodeBuildMCP commands, NOT with `swift test`:
-- Use XcodeBuildMCP test commands like `test_macos_proj`
-- Running tests with `swift test` will cause crashes, especially with UserNotifications framework
-- The test environment requires proper Xcode configuration and entitlements
+**IMPORTANT**: macOS tests MUST be run using XcodeBuildMCP commands or xcodebuild, NOT with `swift test`:
 
-Example:
+#### Why `swift test` Fails
+1. **Missing Server Binary**: The `vibetunnel` SEA (Single Executable Application) binary is only created during the full Xcode build process. Tests expect this binary to be embedded in the app bundle's Resources folder.
+2. **No Proper App Bundle**: `swift test` runs in a minimal test bundle environment without the full app structure
+3. **UserNotifications Framework**: Tests using UserNotifications will crash due to missing bundle configuration
+4. **Missing Build Phases**: The web frontend build and SEA creation only happen during Xcode builds
+
+#### Correct Testing Methods
+
+**Using XcodeBuildMCP (Recommended):**
 ```
-# CORRECT - Use XcodeBuildMCP:
 test_macos_proj(
     projectPath: "/Users/steipete/Projects/vibetunnel/mac/VibeTunnel-Mac.xcodeproj",
     scheme: "VibeTunnel-Mac"
 )
-
-# WRONG - Do NOT use:
-swift test
 ```
+
+**Using xcodebuild directly:**
+```bash
+cd mac
+xcodebuild test \
+    -project VibeTunnel-Mac.xcodeproj \
+    -scheme VibeTunnel-Mac \
+    -destination 'platform=macOS'
+```
+
+**NEVER use:**
+```bash
+swift test  # This will fail with missing server binary and framework issues
+```
+
+The test suite includes checks for the embedded server binary (`ServerBinaryAvailableCondition`) which correctly fail when the binary isn't present, preventing tests from running in an incomplete environment.
 
 ### Testing the Web Interface
 
