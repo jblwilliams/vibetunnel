@@ -68,11 +68,21 @@ struct ServerInfoHeader: View {
                     }
 
                     if tailscaleService.isRunning, let hostname = tailscaleService.tailscaleHostname {
+                        let isTailscaleServeEnabled = UserDefaults.standard
+                            .bool(forKey: AppConstants.UserDefaultsKeys.tailscaleServeEnabled)
                         ServerAddressRow(
                             icon: "shield",
                             label: "Tailscale:",
-                            address: hostname,
-                            url: URL(string: "http://\(hostname):\(serverManager.port)")
+                            address: TailscaleURLHelper.displayAddress(
+                                hostname: hostname,
+                                port: serverManager.port,
+                                isTailscaleServeEnabled: isTailscaleServeEnabled
+                            ),
+                            url: TailscaleURLHelper.constructURL(
+                                hostname: hostname,
+                                port: serverManager.port,
+                                isTailscaleServeEnabled: isTailscaleServeEnabled
+                            )
                         )
                     }
                 }
@@ -179,11 +189,6 @@ struct ServerAddressRow: View {
         // If we have a full URL, return it as-is
         if let providedUrl = url {
             return providedUrl.absoluteString
-        }
-
-        // For Tailscale, return the full URL
-        if label == "Tailscale:" && !address.isEmpty {
-            return "http://\(address):\(serverManager.port)"
         }
 
         // For local addresses, build the full URL

@@ -75,6 +75,35 @@ npm run dev -- --no-auth
 
 **Best for:** Local development, trusted networks, or demo environments
 
+### 5. Tailscale Serve Integration Mode
+
+**Usage:** Enable integrated Tailscale Serve support
+```bash
+npm run dev -- --enable-tailscale-serve
+# or
+./vibetunnel --enable-tailscale-serve
+```
+
+**Behavior:**
+- Automatically starts `tailscale serve` as a background process
+- Forces server to bind to localhost (127.0.0.1) for security
+- Enables Tailscale identity header authentication
+- Provides HTTPS access without exposing ports
+- No manual Tailscale configuration required
+
+**macOS App Integration:**
+- Toggle available in Settings → Remote Access → Tailscale Integration
+- Shows HTTPS URL in menu bar when enabled
+- Automatically manages the Tailscale Serve process lifecycle
+
+**Security Model:**
+- Server only listens on localhost when enabled
+- All external access goes through Tailscale's secure proxy
+- Identity headers are automatically validated
+- No risk of header spoofing from external sources
+
+**Best for:** Easy, secure remote access through Tailscale network
+
 ## User Avatar System
 
 ### macOS Integration
@@ -102,6 +131,7 @@ On non-macOS systems:
 --enable-ssh-keys         Enable SSH key authentication UI and functionality
 --disallow-user-password  Disable password auth, SSH keys only (auto-enables --enable-ssh-keys)
 --no-auth                 Disable authentication (auto-login as current user)
+--enable-tailscale-serve  Enable Tailscale Serve integration (auto-starts proxy, forces localhost)
 
 # Other options
 --port <number>       Server port (default: 4020)
@@ -129,6 +159,10 @@ npm run dev -- --no-auth
 
 # High-security production (SSH keys only)
 ./vibetunnel --disallow-user-password --port 8080
+
+# Tailscale Serve integration (secure remote access)
+./vibetunnel --enable-tailscale-serve --port 4020
+# No manual configuration needed - everything handled automatically
 ```
 
 ## Security Considerations
@@ -150,6 +184,12 @@ npm run dev -- --no-auth
 - **⚠️ Security Warning:** Only use in trusted environments
 - Suitable for local development or demo purposes
 - Not recommended for production or public networks
+
+### Tailscale Authentication
+- **⚠️ Security Warning:** Only use when bound to localhost
+- Requires Tailscale Serve proxy for header injection
+- Provides SSO-like experience for Tailscale users
+- Headers are trusted only from Tailscale proxy
 
 ## Configuration API
 
@@ -235,6 +275,56 @@ This allows the UI to:
 - Regularly rotate SSH keys (recommended: every 90 days)
 - Remove unused keys from authorized_keys
 - Monitor authentication logs for suspicious activity
+
+## Tailscale Authentication Details
+
+### How Tailscale Serve Works
+
+Tailscale Serve acts as a reverse proxy that:
+1. Receives requests from your tailnet
+2. Adds identity headers based on the authenticated Tailscale user
+3. Forwards requests to your local service
+
+### Identity Headers
+
+When a request comes through Tailscale Serve, these headers are added:
+- `tailscale-user-login`: The user's email address or login
+- `tailscale-user-name`: The user's display name
+- `tailscale-user-profile-pic`: URL to the user's profile picture
+
+### Setup Instructions
+
+1. **Start VibeTunnel with integrated Tailscale Serve:**
+   ```bash
+   ./vibetunnel --enable-tailscale-serve --port 4020
+   ```
+   
+   Or use the macOS app and enable the toggle in Settings → Remote Access
+
+2. **Access via Tailscale:**
+   ```
+   https://[your-machine-name].[tailnet-name].ts.net
+   ```
+
+### Security Model
+
+- VibeTunnel trusts identity headers ONLY from localhost connections
+- Tailscale Serve ensures headers cannot be spoofed by external users
+- Direct access to VibeTunnel port would allow header forgery
+- Always bind to `127.0.0.1` when using Tailscale authentication
+
+### Integration with Other Auth Modes
+
+Tailscale Serve integration can be combined with other authentication modes:
+```bash
+# Tailscale Serve + SSH keys as fallback
+./vibetunnel --enable-tailscale-serve --enable-ssh-keys
+
+# Tailscale Serve + local bypass for scripts
+./vibetunnel --enable-tailscale-serve --allow-local-bypass
+```
+
+**Note**: The `--enable-tailscale-serve` flag automatically manages both the Tailscale proxy and authentication.
 
 ## Implementation Details
 

@@ -43,6 +43,7 @@ import { PushNotificationService } from './services/push-notification-service.js
 import { RemoteRegistry } from './services/remote-registry.js';
 import { SessionMonitor } from './services/session-monitor.js';
 import { StreamWatcher } from './services/stream-watcher.js';
+import { tailscaleServeService } from './services/tailscale-serve-service.js';
 import { TerminalManager } from './services/terminal-manager.js';
 import { closeLogger, createLogger, initLogger, setDebugMode } from './utils/logger.js';
 import { VapidManager } from './utils/vapid-manager.js';
@@ -93,6 +94,8 @@ interface Config {
   // Local bypass configuration
   allowLocalBypass: boolean;
   localAuthToken: string | null;
+  // Tailscale Serve integration (manages auth and proxy)
+  enableTailscaleServe: boolean;
   // HQ auth bypass for testing
   noHqAuth: boolean;
   // mDNS advertisement
@@ -116,6 +119,7 @@ Options:
   --no-auth             Disable authentication (auto-login as current user)
   --allow-local-bypass  Allow localhost connections to bypass authentication
   --local-auth-token <token>  Token for localhost authentication bypass
+  --enable-tailscale-serve  Enable Tailscale Serve integration (auto-manages proxy and auth)
   --debug               Enable debug logging
 
 Push Notification Options:
@@ -186,6 +190,8 @@ function parseArgs(): Config {
     // Local bypass configuration
     allowLocalBypass: false,
     localAuthToken: null as string | null,
+    // Tailscale Serve integration (manages auth and proxy)
+    enableTailscaleServe: false,
     // HQ auth bypass for testing
     noHqAuth: false,
     // mDNS advertisement
@@ -251,6 +257,8 @@ function parseArgs(): Config {
     } else if (args[i] === '--local-auth-token' && i + 1 < args.length) {
       config.localAuthToken = args[i + 1];
       i++; // Skip the token value in next iteration
+    } else if (args[i] === '--enable-tailscale-serve') {
+      config.enableTailscaleServe = true;
     } else if (args[i] === '--no-hq-auth') {
       config.noHqAuth = true;
     } else if (args[i] === '--no-mdns') {
@@ -315,6 +323,14 @@ function validateConfig(config: ReturnType<typeof parseArgs>) {
   ) {
     logger.error('All HQ parameters required: --hq-url, --hq-username, --hq-password');
     logger.error('Or use --no-hq-auth for testing without authentication');
+    process.exit(1);
+  }
+
+  // Validate Tailscale configuration
+  if (config.enableTailscaleServe && config.bind === '0.0.0.0') {
+    logger.error('Security Error: Cannot bind to 0.0.0.0 when using Tailscale Serve');
+    logger.error('Tailscale Serve requires binding to localhost (127.0.0.1)');
+    logger.error('Use --bind 127.0.0.1 or disable Tailscale Serve');
     process.exit(1);
   }
 
@@ -565,6 +581,7 @@ export async function createApp(): Promise<AppInstance> {
     authService, // Add enhanced auth service for JWT tokens
     allowLocalBypass: config.allowLocalBypass,
     localAuthToken: config.localAuthToken || undefined,
+    allowTailscaleAuth: config.enableTailscaleServe,
   });
 
   // Serve static files with .html extension handling and caching headers
@@ -828,7 +845,11 @@ export async function createApp(): Promise<AppInstance> {
     logger.debug('Connected Claude turn notifications to PTY manager');
   }
 
-  // Mount authentication routes (no auth required)
+  // Apply auth middleware to all API routes (including auth routes for Tailscale header detection)
+  app.use('/api', authMiddleware);
+  logger.debug('Applied authentication middleware to /api routes');
+
+  // Mount authentication routes (auth middleware will skip these but still check Tailscale headers)
   app.use(
     '/api/auth',
     createAuthRoutes({
@@ -839,10 +860,6 @@ export async function createApp(): Promise<AppInstance> {
     })
   );
   logger.debug('Mounted authentication routes');
-
-  // Apply auth middleware to all API routes (except auth routes which are handled above)
-  app.use('/api', authMiddleware);
-  logger.debug('Applied authentication middleware to /api routes');
 
   // Mount routes
   app.use(
@@ -1187,7 +1204,9 @@ export async function createApp(): Promise<AppInstance> {
       }
     });
 
-    const bindAddress = config.bind || '0.0.0.0';
+    // Regular TCP mode
+    logger.log(`Starting server on port ${requestedPort}`);
+    const bindAddress = config.bind || (config.enableTailscaleServe ? '127.0.0.1' : '0.0.0.0');
     server.listen(requestedPort, bindAddress, () => {
       const address = server.address();
       const actualPort =
@@ -1214,6 +1233,43 @@ export async function createApp(): Promise<AppInstance> {
           logger.log(
             chalk.gray('SSH Key Authentication: DISABLED (use --enable-ssh-keys to enable)')
           );
+        }
+      }
+
+      // Start Tailscale Serve if requested
+      if (config.enableTailscaleServe) {
+        logger.log(chalk.blue('Starting Tailscale Serve integration...'));
+
+        tailscaleServeService
+          .start(actualPort)
+          .then(() => {
+            logger.log(chalk.green('Tailscale Serve: ENABLED'));
+            logger.log(
+              chalk.gray('Users will be auto-authenticated via Tailscale identity headers')
+            );
+            logger.log(
+              chalk.gray(
+                `Access via HTTPS on your Tailscale hostname (e.g., https://hostname.tailnet.ts.net)`
+              )
+            );
+          })
+          .catch((error) => {
+            logger.error(chalk.red('Failed to start Tailscale Serve:'), error.message);
+            logger.warn(
+              chalk.yellow('VibeTunnel will continue running, but Tailscale Serve is not available')
+            );
+            logger.log(chalk.blue('You can manually configure Tailscale Serve with:'));
+            logger.log(chalk.gray(`  tailscale serve ${actualPort}`));
+          });
+      }
+
+      // Log local bypass status
+      if (config.allowLocalBypass) {
+        logger.log(chalk.yellow('Local Bypass: ENABLED'));
+        if (config.localAuthToken) {
+          logger.log(chalk.gray('Local connections require auth token'));
+        } else {
+          logger.log(chalk.gray('Local connections bypass authentication without token'));
         }
       }
 
@@ -1412,6 +1468,13 @@ export async function startVibeTunnelServer() {
       if (mdnsService.isActive()) {
         await mdnsService.stopAdvertising();
         logger.debug('Stopped mDNS advertisement');
+      }
+
+      // Stop Tailscale Serve if it was started
+      if (config.enableTailscaleServe && tailscaleServeService.isRunning()) {
+        logger.log('Stopping Tailscale Serve...');
+        await tailscaleServeService.stop();
+        logger.debug('Stopped Tailscale Serve service');
       }
 
       // Stop control directory watcher
