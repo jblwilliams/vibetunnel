@@ -78,7 +78,7 @@
 				<string>vibetunnel</string>
 			</array>
 			<key>CFBundleURLName</key>
-			<string>com.vibetunnel.app</string>
+			<string>sh.vibetunnel.ios</string>
 		</dict>
 	</array>
 	<key>CFBundleDocumentTypes</key>

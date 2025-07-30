@@ -6,7 +6,7 @@
 set -euo pipefail
 
 # Configuration
-SUBSYSTEM="sh.vibetunnel.vibetunnel"
+SUBSYSTEM="sh.vibetunnel.ios"
 DEFAULT_LEVEL="info"
 
 # Colors for output

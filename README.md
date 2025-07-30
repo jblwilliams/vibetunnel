@@ -948,6 +948,60 @@ sudo tccutil reset ScreenCapture sh.vibetunnel.vibetunnel.debug  # For debug bui
 sudo tccutil reset AppleEvents
 ```
 
+## Logging and Privacy
+
+VibeTunnel uses Apple's unified logging system with the subsystem `sh.vibetunnel.vibetunnel`. By default, macOS redacts sensitive runtime data in logs, showing `<private>` instead of actual values. This is a privacy feature to prevent accidental exposure of sensitive information.
+
+### Bundle Identifiers
+
+VibeTunnel uses the following bundle identifiers:
+
+**Production:**
+- `sh.vibetunnel.vibetunnel` - Main macOS app and logging subsystem
+- `sh.vibetunnel.vibetunnel.debug` - Debug builds of the macOS app
+
+**Testing:**
+- `sh.vibetunnel.vibetunnel.tests` - macOS test suite
+- `sh.vibetunnel.ios.tests` - iOS test suite
+
+**iOS:**
+- `sh.vibetunnel.ios` - iOS keychain service and URL scheme
+
+### Viewing Unredacted Logs
+
+To see full log details for debugging, you have several options:
+
+1. **Use the vtlog script with sudo** (reveals private data):
+   ```bash
+   sudo ./scripts/vtlog.sh --info
+   ```
+
+2. **Configure passwordless sudo** for the log command:
+   ```bash
+   # Add to sudoers (replace 'yourusername' with your actual username)
+   sudo visudo
+   # Add this line:
+   yourusername ALL=(ALL) NOPASSWD: /usr/bin/log
+   ```
+
+3. **Enable private data logging** using a plist file (recommended):
+   ```bash
+   # Create the plist to enable private data for VibeTunnel
+   sudo mkdir -p /Library/Preferences/Logging/Subsystems
+   sudo tee /Library/Preferences/Logging/Subsystems/sh.vibetunnel.vibetunnel.plist > /dev/null << 'EOF'
+   <?xml version="1.0" encoding="UTF-8"?>
+   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+   <plist version="1.0">
+   <dict>
+       <key>Enable-Private-Data</key>
+       <true/>
+   </dict>
+   </plist>
+   EOF
+   ```
+
+For more detailed information about logging privacy and additional methods, see [apple/docs/logging-private-fix.md](apple/docs/logging-private-fix.md).
+
 ## Contributing
 
 We welcome contributions! VibeTunnel is a community-driven project and we'd love to have you join us.

@@ -300,14 +300,14 @@ struct AuthenticationTests {
         }
 
         let item = KeychainItem(
-            service: "com.vibetunnel.app",
+            service: "sh.vibetunnel.ios",
             account: "user-token",
             data: "secret-token".data(using: .utf8)!,
             accessGroup: nil
         )
 
         #expect(item.query[kSecClass as String] as? String == kSecClassGenericPassword as String)
-        #expect(item.query[kSecAttrService as String] as? String == "com.vibetunnel.app")
+        #expect(item.query[kSecAttrService as String] as? String == "sh.vibetunnel.ios")
         #expect(item.query[kSecAttrAccount as String] as? String == "user-token")
     }
 

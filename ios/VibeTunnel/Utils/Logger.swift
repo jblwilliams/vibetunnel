@@ -42,8 +42,8 @@ struct Logger {
 
     init(category: String) {
         self.category = category
-        // Use the same subsystem as the Mac app for consistency
-        self.osLogger = os.Logger(subsystem: "sh.vibetunnel.vibetunnel", category: category)
+        // Use iOS-specific subsystem for proper log filtering
+        self.osLogger = os.Logger(subsystem: "sh.vibetunnel.ios", category: category)
     }
 
     func verbose(_ message: String) {

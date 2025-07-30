@@ -257,7 +257,7 @@ struct FileSystemTests {
     @Test("Sandbox path validation")
     func sandboxPaths() {
         struct SandboxValidator {
-            let appGroupIdentifier = "group.com.vibetunnel"
+            let appGroupIdentifier = "group.sh.vibetunnel"
 
             var documentsDirectory: String {
                 "~/Documents"

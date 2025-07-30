@@ -2107,8 +2107,8 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
   /* Custom styling */
   width: 1rem;
   height: 1rem;
-  background-color: rgb(var(--color-bg-primary));
-  border: 2px solid rgb(var(--color-border) / 0.5);
+  background-color: var(--color-bg);
+  border: 2px solid color-mix(in srgb, var(--color-border) 50%, transparent);
   border-radius: 3px;
   position: relative;
   cursor: pointer;
@@ -2122,14 +2122,14 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 
 /* Hover state */
 .session-toggle-checkbox:hover:not(:checked) {
-  border-color: rgb(var(--color-border));
-  background-color: rgb(var(--color-bg-secondary));
+  border-color: var(--color-border);
+  background-color: var(--color-bg-secondary);
 }
 
 /* Checked state */
 .session-toggle-checkbox:checked {
-  background-color: rgb(var(--color-primary) / 0.15);
-  border-color: rgb(var(--color-primary) / 0.5);
+  background-color: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  border-color: color-mix(in srgb, var(--color-primary) 50%, transparent);
 }
 
 /* Checkmark using pseudo-element */
@@ -2139,7 +2139,7 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
   height: 0.5rem;
   transform: scale(0);
   transition: transform 0.15s ease-in-out;
-  background-color: rgb(var(--color-primary));
+  background-color: var(--color-primary);
   
   /* Create checkmark shape using clip-path */
   clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
@@ -2153,10 +2153,10 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
 /* Focus state */
 .session-toggle-checkbox:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgb(var(--color-primary) / 0.25);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 25%, transparent);
 }
 
 /* Focus visible for keyboard navigation */
 .session-toggle-checkbox:focus-visible {
-  box-shadow: 0 0 0 2px rgb(var(--color-primary) / 0.4);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 40%, transparent);
 }

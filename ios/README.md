@@ -164,7 +164,7 @@ vtlog | grep ServerConfig
 vtlog -v
 
 # Monitor specific subsystem
-vtlog --subsystem sh.vibetunnel.vibetunnel
+vtlog --subsystem sh.vibetunnel.ios
 ```
 
 ### Code Quality

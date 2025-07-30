@@ -1,5 +1,35 @@
 # Fixing macOS Log Redaction for VibeTunnel
 
+## Quick Fix: Configuration Profile (Recommended)
+
+We provide a ready-to-use configuration profile that enables full debug logging for VibeTunnel:
+
+**Location**: `apple/logging/VibeTunnel-Logging.mobileconfig`
+
+### Installing the Profile
+
+#### macOS
+1. Double-click `apple/logging/VibeTunnel-Logging.mobileconfig`
+2. System Settings will open to the Profiles section
+3. Click "Install..." and enter your password
+4. Restart VibeTunnel
+
+#### iOS
+1. AirDrop or email the profile to your device
+2. Open Settings → General → VPN & Device Management
+3. Install the "VibeTunnel Debug Logging" profile
+4. Restart the VibeTunnel app
+
+### Verifying It Works
+```bash
+# You should now see full details instead of <private>
+./scripts/vtlog.sh
+```
+
+### Removing the Profile
+- **macOS**: System Settings → Privacy & Security → Profiles → Remove
+- **iOS**: Settings → General → VPN & Device Management → Remove Profile
+
 ## The Problem
 
 When viewing VibeTunnel logs using Apple's unified logging system, you'll see `<private>` instead of actual values:
@@ -133,17 +163,82 @@ logger.info("Connected to \(sessionId)")
 logger.info("Connected to \(sessionId, privacy: .public)")
 ```
 
-### 4. Configure logging system
+### 4. Configure logging system (Modern Methods)
 
-Temporarily enable private data for all VibeTunnel logs:
+#### Method A: Plist File (Recommended)
+
+Create a plist file to enable private data logging for VibeTunnel:
+
 ```bash
-sudo log config --mode "private_data:on" --subsystem sh.vibetunnel.vibetunnel
+# Create the directory if it doesn't exist
+sudo mkdir -p /Library/Preferences/Logging/Subsystems
+
+# Create the plist file
+sudo tee /Library/Preferences/Logging/Subsystems/sh.vibetunnel.vibetunnel.plist > /dev/null << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Enable-Private-Data</key>
+    <true/>
+</dict>
+</plist>
+EOF
+
+# Verify it was created
+ls -la /Library/Preferences/Logging/Subsystems/sh.vibetunnel.vibetunnel.plist
 ```
 
-To revert:
+To remove:
 ```bash
-sudo log config --mode "private_data:off" --subsystem sh.vibetunnel.vibetunnel
+sudo rm /Library/Preferences/Logging/Subsystems/sh.vibetunnel.vibetunnel.plist
 ```
+
+#### Method B: Configuration Profile
+
+For managed environments or multiple subsystems, create a configuration profile:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>PayloadContent</key>
+    <array>
+        <dict>
+            <key>PayloadType</key>
+            <string>com.apple.system.logging</string>
+            <key>PayloadIdentifier</key>
+            <string>com.example.logging.vibetunnel</string>
+            <key>PayloadUUID</key>
+            <string>$(uuidgen)</string>
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+            <key>Subsystems</key>
+            <dict>
+                <key>sh.vibetunnel.vibetunnel</key>
+                <dict>
+                    <key>Enable-Private-Data</key>
+                    <true/>
+                </dict>
+            </dict>
+        </dict>
+    </array>
+    <key>PayloadIdentifier</key>
+    <string>com.example.vibetunnel.logging</string>
+    <key>PayloadUUID</key>
+    <string>$(uuidgen)</string>
+    <key>PayloadType</key>
+    <string>Configuration</string>
+    <key>PayloadVersion</key>
+    <integer>1</integer>
+</dict>
+</plist>
+```
+
+Install via System Settings → Profiles.
+
+**Note:** The old `private_data:on` flag was removed in macOS Catalina and no longer works.
 
 ## Using vtlog.sh
 
