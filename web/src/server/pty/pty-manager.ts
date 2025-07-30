@@ -517,6 +517,14 @@ export class PtyManager extends EventEmitter {
         }
       }
 
+      // Detect if this is a tmux attachment session
+      const isTmuxAttachment =
+        (resolvedCommand.includes('tmux') &&
+          (resolvedCommand.includes('attach-session') ||
+            resolvedCommand.includes('attach') ||
+            resolvedCommand.includes('a'))) ||
+        sessionName.startsWith('tmux:');
+
       const session: PtySession = {
         id: sessionId,
         sessionInfo,
@@ -531,6 +539,7 @@ export class PtyManager extends EventEmitter {
         isExternalTerminal: !!options.forwardToStdout,
         currentWorkingDir: workingDir,
         titleFilter: new TitleSequenceFilter(),
+        isTmuxAttachment,
       };
 
       this.sessions.set(sessionId, session);
@@ -1510,6 +1519,54 @@ export class PtyManager extends EventEmitter {
   }
 
   /**
+   * Detach from a tmux session gracefully
+   * @param sessionId The session ID of the tmux attachment
+   * @returns Promise that resolves when detached
+   */
+  private async detachFromTmux(sessionId: string): Promise<boolean> {
+    const session = this.sessions.get(sessionId);
+    if (!session || !session.isTmuxAttachment || !session.ptyProcess) {
+      return false;
+    }
+
+    try {
+      logger.log(chalk.cyan(`Detaching from tmux session (${sessionId})`));
+
+      // Try the standard detach sequence first (Ctrl-B, d)
+      await this.sendInput(sessionId, { text: '\x02d' }); // \x02 is Ctrl-B
+
+      // Wait for detachment
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // Check if the process is still running
+      if (!ProcessUtils.isProcessRunning(session.ptyProcess.pid)) {
+        logger.log(chalk.green(`Successfully detached from tmux (${sessionId})`));
+        return true;
+      }
+
+      // If still running, try sending the detach-client command
+      logger.debug('First detach attempt failed, trying detach-client command');
+      await this.sendInput(sessionId, { text: ':detach-client\n' });
+
+      // Wait a bit longer
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Final check
+      if (!ProcessUtils.isProcessRunning(session.ptyProcess.pid)) {
+        logger.log(
+          chalk.green(`Successfully detached from tmux using detach-client (${sessionId})`)
+        );
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      logger.error(`Error detaching from tmux: ${error}`);
+      return false;
+    }
+  }
+
+  /**
    * Kill a session with proper SIGTERM -> SIGKILL escalation
    * Returns a promise that resolves when the process is actually terminated
    */
@@ -1517,6 +1574,19 @@ export class PtyManager extends EventEmitter {
     const memorySession = this.sessions.get(sessionId);
 
     try {
+      // Special handling for tmux attachment sessions
+      if (memorySession?.isTmuxAttachment) {
+        const detached = await this.detachFromTmux(sessionId);
+        if (detached) {
+          // The PTY process should exit cleanly after detaching
+          // Let the normal exit handler clean up the session
+          return;
+        }
+
+        logger.warn(`Failed to detach from tmux, falling back to normal kill`);
+        // Fall through to normal kill logic
+      }
+
       // If we have an in-memory session with active PTY, kill it directly
       if (memorySession?.ptyProcess) {
         // If signal is already SIGKILL, send it immediately and wait briefly

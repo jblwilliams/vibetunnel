@@ -116,6 +116,8 @@ export interface PtySession {
   currentCommand?: string; // Command line of current foreground process
   commandStartTime?: number; // When current command started (timestamp)
   processPollingInterval?: NodeJS.Timeout; // Interval for checking process state
+  // Tmux attachment tracking
+  isTmuxAttachment?: boolean; // True if this session is attached to tmux
 }
 
 export class PtyError extends Error {

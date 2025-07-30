@@ -611,9 +611,19 @@ export function createSessionRoutes(config: SessionRoutesConfig): Router {
         logger.log(chalk.yellow(`local session ${sessionId} cleaned up`));
         res.json({ success: true, message: 'Session cleaned up' });
       } else {
+        // Check if this is a tmux attachment before killing
+        const isTmuxAttachment =
+          session.name?.startsWith('tmux:') || session.command?.includes('tmux attach');
+
         await ptyManager.killSession(sessionId, 'SIGTERM');
-        logger.log(chalk.yellow(`local session ${sessionId} killed`));
-        res.json({ success: true, message: 'Session killed' });
+
+        if (isTmuxAttachment) {
+          logger.log(chalk.yellow(`local session ${sessionId} detached from tmux`));
+          res.json({ success: true, message: 'Detached from tmux session' });
+        } else {
+          logger.log(chalk.yellow(`local session ${sessionId} killed`));
+          res.json({ success: true, message: 'Session killed' });
+        }
       }
     } catch (error) {
       logger.error('error killing session:', error);
