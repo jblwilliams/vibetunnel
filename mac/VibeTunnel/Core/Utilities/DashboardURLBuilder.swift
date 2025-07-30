@@ -14,10 +14,8 @@ enum DashboardURLBuilder {
     static func dashboardURL(port: String, sessionId: String? = nil) -> URL? {
         let serverManager = ServerManager.shared
         if let sessionId {
-            return serverManager.buildURL(
-                endpoint: "/",
-                queryItems: [URLQueryItem(name: "session", value: sessionId)]
-            )
+            // Use path-based URL format: /session/sessionId
+            return serverManager.buildURL(endpoint: "/session/\(sessionId)")
         } else {
             return serverManager.buildURL(endpoint: "/")
         }
