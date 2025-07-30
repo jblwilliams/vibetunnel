@@ -20,11 +20,7 @@ export interface AuthenticatedRequest extends Request {
   userId?: string;
   authMethod?: 'ssh-key' | 'password' | 'hq-bearer' | 'no-auth' | 'local-bypass' | 'tailscale';
   isHQRequest?: boolean;
-  tailscaleUser?: {
-    login: string;
-    name: string;
-    profilePic?: string;
-  };
+  tailscaleUser?: TailscaleUser;
 }
 
 // Helper function to check if request is from localhost
@@ -59,14 +55,28 @@ function isFromLocalhostAddress(req: Request): boolean {
   return remoteAddr === '127.0.0.1' || remoteAddr === '::1' || remoteAddr === '::ffff:127.0.0.1';
 }
 
+// Type definition for Tailscale headers
+interface TailscaleHeaders {
+  'tailscale-user-login'?: string;
+  'tailscale-user-name'?: string;
+  'tailscale-user-profile-pic'?: string;
+}
+
+// Type for validated Tailscale user information
+export interface TailscaleUser {
+  login: string;
+  name: string;
+  profilePic?: string;
+}
+
 // Helper function to check if request has valid Tailscale headers
-function getTailscaleUser(
-  req: Request
-): { login: string; name: string; profilePic?: string } | null {
-  // Tailscale headers don't have 'x-' prefix
-  const login = req.headers['tailscale-user-login'] as string;
-  const name = req.headers['tailscale-user-name'] as string;
-  const profilePic = req.headers['tailscale-user-profile-pic'] as string;
+function getTailscaleUser(req: Request): TailscaleUser | null {
+  // Type-safe header access
+  const headers = req.headers as unknown as TailscaleHeaders;
+
+  const login = headers['tailscale-user-login'];
+  const name = headers['tailscale-user-name'];
+  const profilePic = headers['tailscale-user-profile-pic'];
 
   // Must have at least login to be valid
   if (!login) {
@@ -85,13 +95,17 @@ export function createAuthMiddleware(config: AuthConfig) {
     // Skip auth for auth endpoints, client logging, push notifications, and Tailscale status
     if (
       req.path.startsWith('/auth') ||
+      req.path.startsWith('/api/auth') ||
       req.path.startsWith('/logs') ||
       req.path === '/sessions/tailscale/status' ||
       req.path.startsWith('/push')
     ) {
       // Special case: If Tailscale auth is enabled and we have valid headers,
       // set the auth info even for /auth endpoints so the client knows we're authenticated
-      if (config.allowTailscaleAuth && req.path.startsWith('/auth')) {
+      if (
+        config.allowTailscaleAuth &&
+        (req.path.startsWith('/auth') || req.path.startsWith('/api/auth'))
+      ) {
         const tailscaleUser = getTailscaleUser(req);
         if (tailscaleUser) {
           req.authMethod = 'tailscale';

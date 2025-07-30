@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { promisify } from 'util';
-import type { AuthenticatedRequest } from '../middleware/auth.js';
+import type { AuthenticatedRequest, TailscaleUser } from '../middleware/auth.js';
 import type { AuthService } from '../services/auth-service.js';
 
 interface AuthRoutesConfig {
@@ -178,11 +178,7 @@ export function createAuthRoutes(config: AuthRoutesConfig): Router {
         noAuth: boolean;
         tailscaleAuth?: boolean;
         authenticatedUser?: string;
-        tailscaleUser?: {
-          login: string;
-          name: string;
-          profilePic?: string;
-        };
+        tailscaleUser?: TailscaleUser;
       }
 
       const response: AuthConfigResponse = {
