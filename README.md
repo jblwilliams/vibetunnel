@@ -971,20 +971,42 @@ VibeTunnel uses the following bundle identifiers:
 
 To see full log details for debugging, you have several options:
 
-1. **Use the vtlog script with sudo** (reveals private data):
+1. **Install the Configuration Profile** (Recommended - easiest method):
    ```bash
-   sudo ./scripts/vtlog.sh --info
+   # Install the logging configuration profile
+   open apple/logging/VibeTunnel-Logging.mobileconfig
+   
+   # This enables debug logging for all VibeTunnel components
+   # To remove later: System Settings → Privacy & Security → Profiles
    ```
 
-2. **Configure passwordless sudo** for the log command:
+2. **Use the vtlog script** (convenient log viewer):
+   ```bash
+   # View recent logs (requires configuration profile or sudo)
+   ./scripts/vtlog.sh
+   
+   # Follow logs in real-time
+   ./scripts/vtlog.sh -f
+   
+   # Show only errors
+   ./scripts/vtlog.sh -e
+   
+   # Filter by category
+   ./scripts/vtlog.sh -c ServerManager
+   ```
+
+3. **Configure passwordless sudo** (alternative for vtlog with -p flag):
    ```bash
    # Add to sudoers (replace 'yourusername' with your actual username)
    sudo visudo
    # Add this line:
    yourusername ALL=(ALL) NOPASSWD: /usr/bin/log
+   
+   # Then use vtlog with private flag
+   ./scripts/vtlog.sh -p
    ```
 
-3. **Enable private data logging** using a plist file (recommended):
+4. **Enable private data logging** using a plist file (alternative):
    ```bash
    # Create the plist to enable private data for VibeTunnel
    sudo mkdir -p /Library/Preferences/Logging/Subsystems
@@ -999,6 +1021,10 @@ To see full log details for debugging, you have several options:
    </plist>
    EOF
    ```
+
+### Why Logs Show `<private>`
+
+Apple redacts dynamic values in logs by default to protect user privacy. This prevents accidental logging of passwords, tokens, or personal information. Our configuration profile or the methods above enable full visibility for development and debugging.
 
 For more detailed information about logging privacy and additional methods, see [apple/docs/logging-private-fix.md](apple/docs/logging-private-fix.md).
 
