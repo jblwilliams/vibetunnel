@@ -415,7 +415,7 @@ export class WorktreeManager extends LitElement {
                       
                       <div class="flex gap-2 flex-wrap sm:flex-nowrap sm:ml-4">
                         ${
-                          !worktree.isMainWorktree
+                          !worktree.isMainWorktree && !worktree.isCurrentWorktree
                             ? html`
                           <button
                             @click=${() => this.handleToggleFollow(worktree.branch, this.followBranch !== worktree.branch)}
