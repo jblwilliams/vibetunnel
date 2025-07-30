@@ -99,7 +99,7 @@ export class QuickStartSection extends LitElement {
                     @click=${() => this.handleQuickStartClick(command)}
                     class="${
                       this.selectedCommand === command
-                        ? 'px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 lg:py-3 rounded-lg border text-left transition-all bg-primary bg-opacity-10 border-primary/50 text-primary hover:bg-opacity-20 font-medium text-[10px] sm:text-xs lg:text-sm'
+                        ? 'px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 lg:py-3 rounded-lg border text-left transition-all bg-primary/10 border-primary/50 text-primary hover:bg-primary/20 font-medium text-[10px] sm:text-xs lg:text-sm'
                         : 'px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 lg:py-3 rounded-lg border text-left transition-all bg-bg-elevated border-border/50 text-text hover:bg-hover hover:border-primary/50 hover:text-primary text-[10px] sm:text-xs lg:text-sm'
                     }"
                     ?disabled=${this.disabled || this.isCreating}

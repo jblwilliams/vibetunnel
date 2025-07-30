@@ -33,13 +33,13 @@ export class AuthQuickKeys extends LitElement {
 
   render() {
     return html`
-      <div class="quick-keys-bar bg-secondary border-t border-base p-2">
+      <div class="quick-keys-bar bg-bg-secondary border-t border-border p-2">
         <div class="flex gap-1 overflow-x-auto scrollbar-hide">
           ${QUICK_KEYS.map(
             ({ key, label }) => html`
               <button
                 type="button"
-                class="quick-key-btn px-3 py-1.5 bg-tertiary text-primary text-xs font-mono rounded border border-base hover:bg-surface hover:border-primary transition-all whitespace-nowrap flex-shrink-0"
+                class="quick-key-btn px-3 py-1.5 bg-bg-tertiary text-primary text-xs font-mono rounded border border-border hover:bg-surface hover:border-primary transition-all whitespace-nowrap flex-shrink-0"
                 @click=${() => this.handleKeyPress(key)}
               >
                 ${label}

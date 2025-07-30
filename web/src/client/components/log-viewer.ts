@@ -282,7 +282,7 @@ export class LogViewer extends LitElement {
 
     if (this.loading) {
       return html`
-        <div class="flex items-center justify-center h-screen bg-base text-primary">
+        <div class="flex items-center justify-center h-screen bg-bg text-primary">
           <div class="text-center">
             <div
               class="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mb-4 mx-auto"
@@ -297,16 +297,16 @@ export class LogViewer extends LitElement {
 
     return html`
       ${scrollbarStyles}
-      <div class="flex flex-col h-full bg-base text-primary font-mono">
+      <div class="flex flex-col h-full bg-bg text-primary font-mono">
         <!-- Header - single row on desktop, two rows on mobile -->
-        <div class="bg-secondary border-b border-border/50 p-3 sm:p-4">
+        <div class="bg-bg-secondary border-b border-border/50 p-3 sm:p-4">
           <!-- Mobile layout (two rows) -->
           <div class="sm:hidden">
             <!-- Top row with back button and title -->
             <div class="flex items-center gap-2 mb-3">
               <!-- Back button -->
               <button
-                class="p-2 bg-base border border-border/50 rounded text-sm text-primary hover:border-primary hover:text-primary transition-colors flex items-center gap-1 flex-shrink-0"
+                class="p-2 bg-bg border border-border/50 rounded text-sm text-primary hover:border-primary hover:text-primary transition-colors flex items-center gap-1 flex-shrink-0"
                 @click=${() => {
                   window.location.href = '/';
                 }}
@@ -335,8 +335,8 @@ export class LogViewer extends LitElement {
                 <button
                   class="p-2 text-xs uppercase font-bold rounded transition-colors ${
                     this.autoScroll
-                      ? 'bg-primary text-base'
-                      : 'bg-tertiary text-muted border border-border/50'
+                      ? 'bg-primary text-bg'
+                      : 'bg-bg-tertiary text-text-muted border border-border/50'
                   }"
                   @click=${() => {
                     this.autoScroll = !this.autoScroll;
@@ -362,7 +362,7 @@ export class LogViewer extends LitElement {
               <!-- Search input -->
               <input
                 type="text"
-                class="px-3 py-1.5 bg-base border border-border/50 rounded text-sm text-primary placeholder-muted focus:outline-none focus:border-primary transition-colors w-full"
+                class="px-3 py-1.5 bg-bg border border-border/50 rounded text-sm text-primary placeholder-text-muted focus:outline-none focus:border-primary transition-colors w-full"
                 placeholder="Filter logs..."
                 .value=${this.filter}
                 @input=${(e: Event) => {
@@ -380,12 +380,12 @@ export class LogViewer extends LitElement {
                         class="px-1.5 py-1 text-xs uppercase font-bold rounded transition-colors ${
                           this.levelFilter.has(level)
                             ? level === 'error'
-                              ? 'bg-status-error bg-opacity-20 text-status-error border border-status-error'
+                              ? 'bg-status-error/20 text-status-error border border-status-error'
                               : level === 'warn'
-                                ? 'bg-status-warning bg-opacity-20 text-status-warning border border-status-warning'
+                                ? 'bg-status-warning/20 text-status-warning border border-status-warning'
                                 : level === 'debug'
                                   ? 'bg-bg-tertiary text-text-muted border border-border'
-                                  : 'bg-primary bg-opacity-20 text-primary border border-primary'
+                                  : 'bg-primary/20 text-primary border border-primary'
                             : 'bg-bg-tertiary text-text-muted border border-border'
                         }"
                         @click=${() => this.toggleLevel(level)}
@@ -410,7 +410,7 @@ export class LogViewer extends LitElement {
                   <button
                     class="px-1.5 py-1 text-xs uppercase font-bold rounded transition-colors ${
                       this.showClient
-                        ? 'bg-status-warning bg-opacity-20 text-status-warning border border-status-warning'
+                        ? 'bg-status-warning/20 text-status-warning border border-status-warning'
                         : 'bg-bg-tertiary text-text-muted border border-border'
                     }"
                     @click=${() => {
@@ -423,7 +423,7 @@ export class LogViewer extends LitElement {
                   <button
                     class="px-1.5 py-1 text-xs uppercase font-bold rounded transition-colors ${
                       this.showServer
-                        ? 'bg-primary bg-opacity-20 text-primary border border-primary'
+                        ? 'bg-primary/20 text-primary border border-primary'
                         : 'bg-bg-tertiary text-text-muted border border-border'
                     }"
                     @click=${() => {
@@ -485,12 +485,12 @@ export class LogViewer extends LitElement {
                       class="px-2 py-1 text-xs uppercase font-bold rounded transition-colors ${
                         this.levelFilter.has(level)
                           ? level === 'error'
-                            ? 'bg-status-error bg-opacity-20 text-status-error border border-status-error'
+                            ? 'bg-status-error/20 text-status-error border border-status-error'
                             : level === 'warn'
-                              ? 'bg-status-warning bg-opacity-20 text-status-warning border border-status-warning'
+                              ? 'bg-status-warning/20 text-status-warning border border-status-warning'
                               : level === 'debug'
                                 ? 'bg-bg-tertiary text-text-muted border border-border'
-                                : 'bg-primary bg-opacity-20 text-primary border border-primary'
+                                : 'bg-primary/20 text-primary border border-primary'
                           : 'bg-bg-tertiary text-text-muted border border-border'
                       }"
                       @click=${() => this.toggleLevel(level)}
@@ -506,7 +506,7 @@ export class LogViewer extends LitElement {
                 <button
                   class="px-2 py-1 text-xs uppercase font-bold rounded transition-colors ${
                     this.showClient
-                      ? 'bg-status-warning bg-opacity-20 text-status-warning border border-status-warning'
+                      ? 'bg-status-warning/20 text-status-warning border border-status-warning'
                       : 'bg-bg-tertiary text-text-muted border border-border'
                   }"
                   @click=${() => {
@@ -518,7 +518,7 @@ export class LogViewer extends LitElement {
                 <button
                   class="px-2 py-1 text-xs uppercase font-bold rounded transition-colors ${
                     this.showServer
-                      ? 'bg-primary bg-opacity-20 text-primary border border-primary'
+                      ? 'bg-primary/20 text-primary border border-primary'
                       : 'bg-bg-tertiary text-text-muted border border-border'
                   }"
                   @click=${() => {
@@ -533,7 +533,7 @@ export class LogViewer extends LitElement {
               <button
                 class="px-3 py-1 text-xs uppercase font-bold rounded transition-colors ${
                   this.autoScroll
-                    ? 'bg-primary bg-opacity-20 text-primary border border-primary'
+                    ? 'bg-primary/20 text-primary border border-primary'
                     : 'bg-bg-tertiary text-text-muted border border-border'
                 }"
                 @click=${() => {

@@ -176,7 +176,7 @@ export class SSHKeyManager extends LitElement {
 
     return html`
       <div 
-        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[1000]"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[1000]"
         @click=${this.handleBackdropClick}
       >
         <div
@@ -190,7 +190,7 @@ export class SSHKeyManager extends LitElement {
             <h2 class="text-2xl font-mono text-primary text-center">🔑 SSH Key Manager</h2>
             <button 
               @click=${this.handleClose} 
-              class="absolute top-0 right-0 w-8 h-8 flex items-center justify-center text-muted hover:text-primary hover:bg-surface rounded transition-colors"
+              class="absolute top-0 right-0 w-8 h-8 flex items-center justify-center text-text-muted hover:text-primary hover:bg-surface rounded transition-colors"
               title="Close"
             >
               ✕
@@ -277,7 +277,7 @@ export class SSHKeyManager extends LitElement {
                         <div>
                           <label class="form-label">Algorithm</label>
                           <div
-                            class="input-field bg-secondary text-muted cursor-not-allowed"
+                            class="input-field bg-bg-secondary text-text-muted cursor-not-allowed"
                           >
                             Ed25519 (recommended)
                           </div>
@@ -296,7 +296,7 @@ export class SSHKeyManager extends LitElement {
                           }}
                           ?disabled=${this.loading}
                         />
-                        <p class="text-muted text-xs mt-1">
+                        <p class="text-text-muted text-xs mt-1">
                           💡 Leave empty for unencrypted key. Password is required when using the
                           key for signing.
                         </p>
@@ -346,7 +346,7 @@ export class SSHKeyManager extends LitElement {
                           }}
                           ?disabled=${this.loading}
                         ></textarea>
-                        <p class="text-muted text-xs mt-1">
+                        <p class="text-text-muted text-xs mt-1">
                           💡 If the key is password-protected, you'll be prompted for the password
                           when using it for authentication.
                         </p>
@@ -383,7 +383,7 @@ export class SSHKeyManager extends LitElement {
                       @click=${() => {
                         this.showInstructions = false;
                       }}
-                      class="w-8 h-8 flex items-center justify-center text-muted hover:text-primary hover:bg-bg rounded transition-colors"
+                      class="w-8 h-8 flex items-center justify-center text-text-muted hover:text-primary hover:bg-bg rounded transition-colors"
                       title="Close instructions"
                     >
                       ✕
@@ -391,7 +391,7 @@ export class SSHKeyManager extends LitElement {
                   </div>
                   <div class="space-y-6">
                     <div class="bg-bg border border-border rounded-lg p-4">
-                      <p class="text-muted text-sm mb-3 font-medium">
+                      <p class="text-text-muted text-sm mb-3 font-medium">
                         1. Add the public key to your authorized_keys file:
                       </p>
                       <div class="relative">
@@ -415,7 +415,7 @@ echo "${this.sshAgent.getPublicKey(this.instructionsKeyId)}" >> ~/.ssh/authorize
                       </div>
                     </div>
                     <div class="bg-bg border border-border rounded-lg p-4">
-                      <p class="text-muted text-sm mb-3 font-medium">2. Or copy the public key:</p>
+                      <p class="text-text-muted text-sm mb-3 font-medium">2. Or copy the public key:</p>
                       <div class="relative">
                         <pre
                           class="bg-secondary p-3 rounded-lg text-xs overflow-x-auto text-primary pr-20 font-mono"
@@ -437,8 +437,8 @@ ${this.sshAgent.getPublicKey(this.instructionsKeyId)}</pre
                         </button>
                       </div>
                     </div>
-                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <p class="text-blue-700 text-sm font-mono flex items-center gap-2">
+                    <div class="bg-status-info/10 border border-status-info/30 rounded-lg p-3">
+                      <p class="text-status-info text-sm font-mono flex items-center gap-2">
                         💡 <strong>Tip:</strong> Make sure ~/.ssh/authorized_keys has correct permissions (600)
                       </p>
                     </div>
@@ -453,7 +453,7 @@ ${this.sshAgent.getPublicKey(this.instructionsKeyId)}</pre
             ${
               this.keys.length === 0
                 ? html`
-                  <div class="text-center py-12 text-muted border border-border rounded-lg bg-surface">
+                  <div class="text-center py-12 text-text-muted border border-border rounded-lg bg-surface">
                     <div class="text-4xl mb-4">🔑</div>
                     <p class="font-mono text-lg mb-2 text-primary">No SSH keys found</p>
                     <p class="text-sm">Generate or import a key to get started</p>
@@ -473,7 +473,7 @@ ${this.sshAgent.getPublicKey(this.instructionsKeyId)}</pre
                                 : ''
                             }
                           </div>
-                          <div class="text-sm text-muted font-mono space-y-1">
+                          <div class="text-sm text-text-muted font-mono space-y-1">
                             <div>ID: ${key.id}</div>
                             <div>Fingerprint: ${key.fingerprint}</div>
                             <div>Created: ${new Date(key.createdAt).toLocaleString()}</div>

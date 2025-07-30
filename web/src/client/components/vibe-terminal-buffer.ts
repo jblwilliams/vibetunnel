@@ -244,7 +244,7 @@ export class VibeTerminalBuffer extends LitElement {
           this.error
             ? html`
               <div class="absolute inset-0 flex items-center justify-center">
-                <div class="text-red-500 text-sm">${this.error}</div>
+                <div class="text-status-error text-sm">${this.error}</div>
               </div>
             `
             : html`

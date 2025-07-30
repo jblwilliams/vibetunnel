@@ -197,7 +197,7 @@ export class SessionStatusDropdown extends LitElement {
             height="10"
             viewBox="0 0 10 10"
             fill="currentColor"
-            class="transition-transform text-muted ${this.showMenu ? 'rotate-180' : ''}"
+            class="transition-transform text-text-muted ${this.showMenu ? 'rotate-180' : ''}"
           >
             <path d="M5 7L1 3h8z" />
           </svg>
@@ -235,7 +235,7 @@ export class SessionStatusDropdown extends LitElement {
           `
             : html`
             <button
-              class="w-full text-left px-6 py-3 text-sm font-mono text-muted hover:bg-bg-secondary hover:text-primary flex items-center gap-3 ${
+              class="w-full text-left px-6 py-3 text-sm font-mono text-text-muted hover:bg-bg-secondary hover:text-primary flex items-center gap-3 ${
                 this.focusedIndex === menuItemIndex++ ? 'bg-bg-secondary text-primary' : ''
               }"
               @click=${() => this.handleAction(this.onClear)}

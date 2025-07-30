@@ -214,7 +214,7 @@ export class CompactMenu extends LitElement {
     return html`
       <div class="relative w-[44px] flex-shrink-0">
         <button
-          class="p-2 ${this.showMenu ? 'text-primary border-primary' : 'text-primary border-base'} hover:border-primary hover:text-primary rounded-lg"
+          class="p-2 bg-bg-tertiary border ${this.showMenu ? 'text-primary border-primary' : 'text-primary border-border'} hover:border-primary hover:text-primary hover:bg-surface-hover rounded-lg transition-all duration-200"
           @click=${this.toggleMenu}
           @keydown=${this.handleMenuButtonKeyDown}
           title="More actions"
@@ -235,13 +235,13 @@ export class CompactMenu extends LitElement {
     let menuItemIndex = 0;
     return html`
       <div 
-        class="absolute right-0 top-full mt-2 bg-surface border border-base rounded-lg shadow-xl py-1 min-w-[250px]"
+        class="absolute right-0 top-full mt-2 bg-surface border border-border rounded-lg shadow-xl py-1 min-w-[250px]"
         style="z-index: ${Z_INDEX.WIDTH_SELECTOR_DROPDOWN};"
       >
         
         <!-- New Session -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-surface-hover hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-surface-hover text-primary' : ''}"
           @click=${() => this.handleAction(this.onCreateSession)}
           data-testid="compact-new-session"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -252,11 +252,11 @@ export class CompactMenu extends LitElement {
           New Session
         </button>
         
-        <div class="border-t border-base my-1"></div>
+        <div class="border-t border-border my-1"></div>
         
         <!-- File Browser -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-surface-hover hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-surface-hover text-primary' : ''}"
           @click=${() => this.handleAction(this.onOpenFileBrowser)}
           data-testid="compact-file-browser"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -269,7 +269,7 @@ export class CompactMenu extends LitElement {
         
         <!-- Upload Image -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-surface-hover hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-surface-hover text-primary' : ''}"
           @click=${() => this.handleAction(this.onUploadImage)}
           data-testid="compact-upload-image"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -282,7 +282,7 @@ export class CompactMenu extends LitElement {
         
         <!-- Width Settings -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-surface-hover hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-surface-hover text-primary' : ''}"
           @click=${() => this.handleAction(this.onMaxWidthToggle)}
           data-testid="compact-width-settings"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -298,7 +298,7 @@ export class CompactMenu extends LitElement {
           this.hasGitRepo
             ? html`
               <button
-                class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
+                class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-surface-hover hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-surface-hover text-primary' : ''}"
                 @click=${() => this.handleAction(this.onToggleViewMode)}
                 data-testid="compact-worktree-toggle"
                 tabindex="${this.showMenu ? '0' : '-1'}"
@@ -314,7 +314,7 @@ export class CompactMenu extends LitElement {
         
         <!-- Theme Toggle -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-surface-hover hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-surface-hover text-primary' : ''}"
           @click=${() => this.handleThemeChange()}
           data-testid="compact-theme-toggle"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -325,7 +325,7 @@ export class CompactMenu extends LitElement {
         
         <!-- Settings -->
         <button
-          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
+          class="w-full text-left px-4 py-3 text-sm font-mono text-primary hover:bg-surface-hover hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-surface-hover text-primary' : ''}"
           @click=${() => this.handleAction(this.onOpenSettings)}
           data-testid="compact-settings"
           tabindex="${this.showMenu ? '0' : '-1'}"
@@ -339,14 +339,14 @@ export class CompactMenu extends LitElement {
         ${
           this.session
             ? html`
-          <div class="border-t border-base my-1"></div>
+          <div class="border-t border-border my-1"></div>
           
           <!-- Session Actions -->
           ${
             this.session.status === 'running'
               ? html`
             <button
-              class="w-full text-left px-4 py-3 text-sm font-mono text-status-error hover:bg-secondary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary' : ''}"
+              class="w-full text-left px-4 py-3 text-sm font-mono text-status-error hover:bg-surface-hover flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-surface-hover' : ''}"
               @click=${() => this.handleAction(this.onTerminateSession)}
               data-testid="compact-terminate-session"
               tabindex="${this.showMenu ? '0' : '-1'}"
@@ -359,7 +359,7 @@ export class CompactMenu extends LitElement {
           `
               : html`
             <button
-              class="w-full text-left px-4 py-3 text-sm font-mono text-muted hover:bg-secondary hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-secondary text-primary' : ''}"
+              class="w-full text-left px-4 py-3 text-sm font-mono text-text-muted hover:bg-surface-hover hover:text-primary flex items-center gap-3 ${this.focusedIndex === menuItemIndex++ ? 'bg-surface-hover text-primary' : ''}"
               @click=${() => this.handleAction(this.onClearSession)}
               data-testid="compact-clear-session"
               tabindex="${this.showMenu ? '0' : '-1'}"

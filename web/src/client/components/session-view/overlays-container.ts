@@ -181,7 +181,7 @@ export class OverlaysContainer extends LitElement {
       ${
         this.uiState.isDragOver
           ? html`
-            <div class="fixed inset-0 bg-bg bg-opacity-90 backdrop-blur-sm flex items-center justify-center z-50 pointer-events-none animate-fade-in">
+            <div class="fixed inset-0 bg-bg/90 backdrop-blur-sm flex items-center justify-center z-50 pointer-events-none animate-fade-in">
               <div class="bg-elevated border-2 border-dashed border-primary rounded-xl p-10 text-center max-w-md mx-4 shadow-2xl animate-scale-in">
                 <div class="relative mb-6">
                   <div class="w-24 h-24 mx-auto bg-gradient-to-br from-primary to-primary-light rounded-full flex items-center justify-center shadow-glow">
@@ -192,10 +192,10 @@ export class OverlaysContainer extends LitElement {
                   <div class="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50"></div>
                 </div>
                 <h3 class="text-2xl font-bold text-primary mb-3">Drop files here</h3>
-                <p class="text-sm text-muted mb-4">Files will be uploaded and the path sent to terminal</p>
-                <div class="inline-flex items-center gap-2 text-xs text-dim bg-secondary px-4 py-2 rounded-lg">
+                <p class="text-sm text-text-muted mb-4">Files will be uploaded and the path sent to terminal</p>
+                <div class="inline-flex items-center gap-2 text-xs text-text-dim bg-bg-secondary px-4 py-2 rounded-lg">
                   <span class="opacity-75">Or press</span>
-                  <kbd class="px-2 py-1 bg-tertiary border border-base rounded text-primary font-mono text-xs">⌘V</kbd>
+                  <kbd class="px-2 py-1 bg-bg-tertiary border border-border rounded text-primary font-mono text-xs">⌘V</kbd>
                   <span class="opacity-75">to paste from clipboard</span>
                 </div>
               </div>

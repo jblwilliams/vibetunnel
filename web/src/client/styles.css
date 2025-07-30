@@ -1,36 +1,141 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+
+/* Define CSS variables first */
+:root {
+  /* Light mode colors (default) */
+  --color-bg: rgb(250 250 250);
+  --color-bg-secondary: rgb(245 245 245);
+  --color-bg-tertiary: rgb(237 237 237);
+  --color-bg-elevated: rgb(255 255 255);
+  --color-surface: rgb(245 245 245);
+  --color-surface-hover: rgb(237 237 237);
+  --color-border: rgb(226 226 226);
+  --color-border-light: rgb(237 237 237);
+  --color-border-focus: rgb(200 200 200);
+  --color-text: rgb(23 23 23);
+  --color-text-bright: rgb(0 0 0);
+  --color-text-muted: rgb(75 75 75);
+  --color-text-dim: rgb(115 115 115);
+  --color-primary: #10B981;
+  --color-primary-hover: #059669;
+  --color-primary-dark: #047857;
+  --color-primary-light: #34D399;
+  --color-primary-muted: #10B98133;
+  --color-primary-glow: #10B98166;
+  --color-status-error: #EF4444;
+  --color-status-warning: #F59E0B;
+  --color-status-success: #10B981;
+  --color-status-info: #3B82F6;
+}
+
+/* Tailwind v4 Theme Configuration */
+@theme {
+  /* Register custom colors using CSS variables */
+  --color-bg: var(--color-bg);
+  --color-bg-secondary: var(--color-bg-secondary);
+  --color-bg-tertiary: var(--color-bg-tertiary);
+  --color-bg-elevated: var(--color-bg-elevated);
+  --color-surface: var(--color-surface);
+  --color-surface-hover: var(--color-surface-hover);
+  --color-border: var(--color-border);
+  --color-border-light: var(--color-border-light);
+  --color-border-focus: var(--color-border-focus);
+  --color-text: var(--color-text);
+  --color-text-bright: var(--color-text-bright);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-dim: var(--color-text-dim);
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+  --color-primary-dark: var(--color-primary-dark);
+  --color-primary-light: var(--color-primary-light);
+  --color-primary-muted: var(--color-primary-muted);
+  --color-primary-glow: var(--color-primary-glow);
+  --color-accent-primary: var(--color-primary);
+  --color-accent-green: var(--color-status-success);
+  --color-accent-red: var(--color-status-error);
+  --color-status-error: var(--color-status-error);
+  --color-status-warning: var(--color-status-warning);
+  --color-status-success: var(--color-status-success);
+  --color-status-info: var(--color-status-info);
+  
+  /* Box Shadows */
+  --shadow-glow: 0 0 20px rgb(16 185 129 / 0.4);
+  --shadow-glow-sm: 0 0 10px rgb(16 185 129 / 0.3);
+  --shadow-glow-lg: 0 0 30px rgb(16 185 129 / 0.5);
+  --shadow-glow-intense: 0 0 40px rgb(16 185 129 / 0.6);
+  --shadow-glow-error: 0 0 20px rgb(239 68 68 / 0.4);
+  --shadow-glow-error-sm: 0 0 10px rgb(239 68 68 / 0.3);
+  --shadow-glow-error-lg: 0 0 30px rgb(239 68 68 / 0.5);
+  --shadow-glow-warning: 0 0 20px rgb(245 158 11 / 0.4);
+  --shadow-glow-warning-sm: 0 0 10px rgb(245 158 11 / 0.3);
+  --shadow-glow-warning-lg: 0 0 30px rgb(245 158 11 / 0.5);
+  --shadow-card: 0 1px 3px rgb(0 0 0 / 0.3), 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-card-hover: 0 4px 6px rgb(0 0 0 / 0.3), 0 2px 4px rgb(0 0 0 / 0.4);
+  --shadow-elevated: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -2px rgb(0 0 0 / 0.2);
+  
+  /* Animations */
+  --animate-pulse-primary: pulsePrimary 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-slide-in-right: slideInRight 0.3s ease-out;
+  --animate-slide-in-bottom: slideInBottom 0.3s ease-out;
+  --animate-fade-in: fadeIn 0.2s ease-out;
+  --animate-scale-in: scaleIn 0.2s ease-out;
+}
+
+/* Keyframes */
+@keyframes pulsePrimary {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .7;
+  }
+}
+
+@keyframes slideInRight {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInBottom {
+  0% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  0% {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
 
 /* CSS Custom Properties for VibeTunnel constants */
 :root {
-  /* Theme Colors - Light Mode (Default) */
-  --color-bg: 250 250 250; /* #fafafa - Off-white background */
-  --color-bg-secondary: 245 245 245; /* #f5f5f5 - Subtle gray */
-  --color-bg-tertiary: 237 237 237; /* #ededed - Card backgrounds */
-  --color-bg-elevated: 255 255 255; /* #ffffff - Pure white for elevated surfaces */
-  --color-surface: 245 245 245; /* #f5f5f5 */
-  --color-surface-hover: 237 237 237; /* #ededed */
-  --color-border: 226 226 226; /* #e2e2e2 - Subtle gray borders */
-  --color-border-light: 237 237 237; /* #ededed */
-  --color-border-focus: 200 200 200; /* #c8c8c8 */
-  
-  /* Text colors - Light Mode */
-  --color-text: 23 23 23; /* #171717 - Near black for high contrast */
-  --color-text-bright: 0 0 0; /* #000000 - Pure black for emphasis */
-  --color-text-muted: 75 75 75; /* #4b4b4b - Darker muted gray for AAA compliance */
-  --color-text-dim: 115 115 115; /* #737373 - Darker dim gray for AA compliance */
-  
-  /* Primary color (same across themes) */
-  --color-primary: 16 185 129; /* #10B981 - VibeTunnel green */
-  --color-primary-hover: 5 150 105; /* #059669 */
-  --color-primary-dark: 4 120 87; /* #047857 */
-  
-  /* Status colors */
-  --color-status-error: 239 68 68; /* #EF4444 */
-  --color-status-warning: 245 158 11; /* #F59E0B */
-  --color-status-success: 16 185 129; /* #10B981 */
-  --color-status-info: 59 130 246; /* #3B82F6 */
   /* Breakpoints */
   --vt-breakpoint-mobile: 768px;
   --vt-breakpoint-tablet: 1024px;
@@ -60,57 +165,39 @@
 
 /* Dark mode theme colors */
 [data-theme="dark"] {
-  --color-bg: 23 23 23; /* #171717 - Lighter neutral dark */
-  --color-bg-secondary: 32 32 32; /* #202020 - Slightly darker for sidebar */
-  --color-bg-tertiary: 40 40 40; /* #282828 - For buttons and cards */
-  --color-bg-elevated: 48 48 48; /* #303030 - Elevated surfaces */
-  --color-surface: 36 36 36; /* #242424 - Surface color */
-  --color-surface-hover: 52 52 52; /* #343434 - Hover states */
-  --color-border: 64 64 64; /* #404040 - Subtle borders */
-  --color-border-light: 72 72 72; /* #484848 - Light borders */
-  --color-border-focus: 80 80 80; /* #505050 - Focus borders */
-  
-  /* Text colors - Dark Mode */
-  --color-text: 228 228 228; /* #e4e4e4 */
-  --color-text-bright: 255 255 255; /* #ffffff */
-  --color-text-muted: 163 163 163; /* #a3a3a3 */
-  --color-text-dim: 115 115 115; /* #737373 */
-  
-  /* Primary color (same as light mode) */
-  --color-primary: 16 185 129; /* #10B981 */
-  --color-primary-hover: 5 150 105; /* #059669 */
-  --color-primary-dark: 4 120 87; /* #047857 */
-  
-  /* Status colors (same as light mode) */
-  --color-status-error: 239 68 68; /* #EF4444 */
-  --color-status-warning: 245 158 11; /* #F59E0B */
-  --color-status-success: 16 185 129; /* #10B981 */
-  --color-status-info: 59 130 246; /* #3B82F6 */
+  /* Override CSS variables for dark mode */
+  --color-bg: rgb(23 23 23);
+  --color-bg-secondary: rgb(32 32 32);
+  --color-bg-tertiary: rgb(40 40 40);
+  --color-bg-elevated: rgb(48 48 48);
+  --color-surface: rgb(36 36 36);
+  --color-surface-hover: rgb(52 52 52);
+  --color-border: rgb(64 64 64);
+  --color-border-light: rgb(72 72 72);
+  --color-border-focus: rgb(80 80 80);
+  --color-text: rgb(228 228 228);
+  --color-text-bright: rgb(255 255 255);
+  --color-text-muted: rgb(163 163 163);
+  --color-text-dim: rgb(115 115 115);
+  /* Primary and status colors remain the same */
 }
 
 /* System preference detection */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --color-bg: 23 23 23;
-    --color-bg-secondary: 32 32 32;
-    --color-bg-tertiary: 40 40 40;
-    --color-bg-elevated: 48 48 48;
-    --color-surface: 36 36 36;
-    --color-surface-hover: 52 52 52;
-    --color-border: 64 64 64;
-    --color-border-light: 72 72 72;
-    --color-border-focus: 80 80 80;
-    --color-text: 228 228 228;
-    --color-text-bright: 255 255 255;
-    --color-text-muted: 163 163 163;
-    --color-text-dim: 115 115 115;
-    --color-primary: 16 185 129;
-    --color-primary-hover: 5 150 105;
-    --color-primary-dark: 4 120 87;
-    --color-status-error: 239 68 68;
-    --color-status-warning: 245 158 11;
-    --color-status-success: 16 185 129;
-    --color-status-info: 59 130 246;
+    --color-bg: rgb(23 23 23);
+    --color-bg-secondary: rgb(32 32 32);
+    --color-bg-tertiary: rgb(40 40 40);
+    --color-bg-elevated: rgb(48 48 48);
+    --color-surface: rgb(36 36 36);
+    --color-surface-hover: rgb(52 52 52);
+    --color-border: rgb(64 64 64);
+    --color-border-light: rgb(72 72 72);
+    --color-border-focus: rgb(80 80 80);
+    --color-text: rgb(228 228 228);
+    --color-text-bright: rgb(255 255 255);
+    --color-text-muted: rgb(163 163 163);
+    --color-text-dim: rgb(115 115 115);
   }
 }
 
@@ -123,6 +210,126 @@
   body {
     @apply bg-bg text-text;
     transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  
+  /* Checkbox styling */
+  input[type="checkbox"] {
+    @apply w-4 h-4 rounded border border-border bg-bg cursor-pointer;
+    @apply transition-all duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/50;
+    @apply checked:bg-primary checked:border-primary;
+    appearance: none;
+    -webkit-appearance: none;
+    position: relative;
+  }
+  
+  input[type="checkbox"]:checked::before {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+  }
+  
+  /* Select element styling */
+  select {
+    @apply w-full rounded border border-border bg-bg cursor-pointer;
+    @apply transition-all duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/50;
+    @apply hover:border-primary/50;
+    @apply px-3 py-2 pr-8;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+  }
+  
+  /* Dark mode select arrow */
+  [data-theme="dark"] select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  }
+  
+  /* Textarea styling */
+  textarea {
+    @apply w-full rounded border border-border bg-bg;
+    @apply transition-all duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/50;
+    @apply hover:border-primary/50 focus:border-primary;
+    @apply px-3 py-2;
+    resize: vertical;
+    min-height: 80px;
+  }
+  
+  /* Radio button styling */
+  input[type="radio"] {
+    @apply w-4 h-4 border border-border bg-bg cursor-pointer;
+    @apply transition-all duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/50;
+    appearance: none;
+    border-radius: 50%;
+    position: relative;
+  }
+  
+  input[type="radio"]:checked {
+    @apply bg-primary border-primary;
+  }
+  
+  input[type="radio"]:checked::before {
+    content: '';
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+  }
+  
+  /* File input styling */
+  input[type="file"] {
+    @apply w-full rounded border border-border bg-bg cursor-pointer;
+    @apply transition-all duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/50;
+    @apply hover:border-primary/50;
+    @apply px-3 py-2;
+    @apply text-sm text-text;
+  }
+  
+  input[type="file"]::file-selector-button {
+    @apply mr-3 px-3 py-1 rounded bg-primary text-bg;
+    @apply hover:bg-primary-hover;
+    @apply cursor-pointer transition-colors duration-200;
+    border: none;
+    font-weight: 500;
+  }
+  
+  /* Range input styling */
+  input[type="range"] {
+    @apply w-full h-2 bg-bg-tertiary rounded-lg appearance-none cursor-pointer;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/50;
+  }
+  
+  input[type="range"]::-webkit-slider-thumb {
+    @apply appearance-none w-4 h-4 rounded-full bg-primary cursor-pointer;
+    @apply hover:bg-primary-hover transition-colors duration-200;
+    @apply shadow-sm hover:shadow-md;
+  }
+  
+  input[type="range"]::-moz-range-thumb {
+    @apply appearance-none w-4 h-4 rounded-full bg-primary cursor-pointer;
+    @apply hover:bg-primary-hover transition-colors duration-200;
+    @apply shadow-sm hover:shadow-md;
+    border: none;
+  }
+  
+  /* Session toggle checkbox specific styling */
+  .session-toggle-checkbox {
+    @apply w-3 h-3;
   }
 
   /* Default focus styles */
@@ -174,31 +381,49 @@
   }
   
   .btn-sm {
-    @apply btn px-3 py-1.5 text-sm;
+    @apply font-medium rounded-lg transition-all duration-200 ease-in-out;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/50;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply px-3 py-1.5 text-sm;
   }
   
   .btn-md {
-    @apply btn px-4 py-2;
+    @apply font-medium rounded-lg transition-all duration-200 ease-in-out;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/50;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply px-4 py-2;
   }
   
   .btn-lg {
-    @apply btn px-6 py-3 text-lg;
+    @apply font-medium rounded-lg transition-all duration-200 ease-in-out;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/50;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply px-6 py-3 text-lg;
   }
 
   .btn-primary {
-    @apply btn-md bg-primary text-bg;
+    @apply font-medium rounded-lg transition-all duration-200 ease-in-out;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/50;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply px-4 py-2 bg-primary text-bg;
     @apply hover:bg-primary-hover hover:shadow-glow;
     @apply active:scale-95;
   }
 
   .btn-secondary {
-    @apply btn-md border border-primary text-primary;
+    @apply font-medium rounded-lg transition-all duration-200 ease-in-out;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/50;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply px-4 py-2 border border-primary text-primary;
     @apply hover:bg-primary/10 hover:border-primary-hover hover:shadow-glow-sm;
     @apply active:scale-95;
   }
 
   .btn-ghost {
-    @apply btn-md text-text-muted;
+    @apply font-medium rounded-lg transition-all duration-200 ease-in-out;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/50;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply px-4 py-2 text-text-muted;
     @apply hover:text-text hover:bg-bg-tertiary;
   }
 
@@ -249,19 +474,19 @@
   }
   
   .status-badge-success {
-    @apply bg-status-success bg-opacity-20 text-status-success;
+    @apply bg-status-success/20 text-status-success;
   }
   
   .status-badge-warning {
-    @apply bg-status-warning bg-opacity-20 text-status-warning;
+    @apply bg-status-warning/20 text-status-warning;
   }
   
   .status-badge-error {
-    @apply bg-status-error bg-opacity-20 text-status-error;
+    @apply bg-status-error/20 text-status-error;
   }
   
   .status-badge-info {
-    @apply bg-status-info bg-opacity-20 text-status-info;
+    @apply bg-status-info/20 text-status-info;
   }
 
   /* Quick start buttons */
@@ -280,7 +505,7 @@
 
   /* Modal backdrop */
   .modal-backdrop {
-    @apply fixed inset-0 bg-bg bg-opacity-80;
+    @apply fixed inset-0 bg-bg/80;
     z-index: 1000;
     backdrop-filter: blur(4px);
     /* Disable all transitions and animations */
@@ -291,7 +516,7 @@
   /* Modal content */
   .modal-content {
     @apply bg-bg-secondary border border-border rounded-xl;
-    @apply shadow-2xl shadow-black/50;
+    @apply shadow-2xl;
     position: relative;
     z-index: 1001;
     /* Disable all transitions and animations */
@@ -521,7 +746,7 @@
   
   /* Focus within styles */
   .focus-within-glow:focus-within {
-    @apply shadow-glow-sm ring-2 ring-primary ring-opacity-50;
+    @apply shadow-glow-sm ring-2 ring-primary/50;
   }
   
   /* Smooth color transitions */
@@ -1656,7 +1881,6 @@ body.initial-session-load .session-flex-responsive > session-card:nth-child(n + 
     mix-blend-mode: normal;
     z-index: 1000;
   }
-
 
 
 

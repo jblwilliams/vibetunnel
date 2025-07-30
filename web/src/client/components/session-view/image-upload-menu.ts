@@ -245,7 +245,7 @@ export class ImageUploadMenu extends LitElement {
       <div class="relative">
         <vt-tooltip content="Upload Image (⌘U)" .show=${!this.isMobile}>
           <button
-            class="bg-bg-tertiary border border-border rounded-lg p-2 font-mono text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0"
+            class="bg-bg-tertiary border border-border rounded-lg p-2 font-mono text-text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0"
             @click=${this.toggleMenu}
             @keydown=${this.handleMenuButtonKeyDown}
             title="Upload Image"

@@ -22,7 +22,7 @@ async function build() {
 
   // Build CSS
   console.log('Building CSS...');
-  execSync('pnpm exec tailwindcss -i ./src/client/styles.css -o ./public/bundle/styles.css --minify', { stdio: 'inherit' });
+  execSync('pnpm exec postcss ./src/client/styles.css -o ./public/bundle/styles.css', { stdio: 'inherit' });
 
   // Bundle client JavaScript
   console.log('Bundling client JavaScript...');

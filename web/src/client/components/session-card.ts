@@ -373,7 +373,7 @@ export class SessionCard extends LitElement {
       >
         <!-- Compact Header -->
         <div
-          class="flex justify-between items-center px-3 py-2 border-b border-base bg-gradient-to-r from-secondary to-tertiary"
+          class="flex justify-between items-center px-3 py-2 border-b border-border bg-gradient-to-r from-bg-secondary to-bg-tertiary"
         >
           <div class="text-xs font-mono pr-2 flex-1 min-w-0 text-primary">
             <div class="flex items-center gap-2">
@@ -421,8 +421,8 @@ export class SessionCard extends LitElement {
                   <button
                     class="p-1 rounded-full transition-all duration-200 disabled:opacity-50 flex-shrink-0 ${
                       this.session.status === 'running'
-                        ? 'text-status-error hover:bg-status-error hover:bg-opacity-20'
-                        : 'text-status-warning hover:bg-status-warning hover:bg-opacity-20'
+                        ? 'text-status-error hover:bg-status-error/20'
+                        : 'text-status-warning hover:bg-status-warning/20'
                     }"
                     @click=${this.handleKillClick}
                     ?disabled=${this.killing}
@@ -491,7 +491,7 @@ export class SessionCard extends LitElement {
 
         <!-- Compact Footer -->
         <div
-          class="px-3 py-2 text-muted text-xs border-t border-base bg-gradient-to-r from-tertiary to-secondary"
+          class="px-3 py-2 text-text-muted text-xs border-t border-border bg-gradient-to-r from-bg-tertiary to-bg-secondary"
         >
           <div class="flex justify-between items-center min-w-0">
             <span 
@@ -601,7 +601,7 @@ export class SessionCard extends LitElement {
       return 'text-status-error';
     }
     if (this.session.active === false) {
-      return 'text-muted';
+      return 'text-text-muted';
     }
     if (this.session.status === 'running' && this.session.activityStatus?.specificStatus) {
       return 'text-status-warning';
@@ -622,7 +622,7 @@ export class SessionCard extends LitElement {
       } else if (this.session.activityStatus?.isActive || this.isActive) {
         return 'bg-status-success'; // Generic active - solid green
       } else {
-        return 'bg-status-success ring-1 ring-status-success ring-opacity-50'; // Idle - green with ring
+        return 'bg-status-success ring-1 ring-status-success/50'; // Idle - green with ring
       }
     }
     return 'bg-status-warning';

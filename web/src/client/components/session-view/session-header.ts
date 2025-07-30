@@ -152,9 +152,9 @@ export class SessionHeader extends LitElement {
   }
 
   private getStatusDotColor(): string {
-    if (!this.session) return 'bg-muted';
+    if (!this.session) return 'bg-bg-muted';
     if ('active' in this.session && this.session.active === false) {
-      return 'bg-muted';
+      return 'bg-bg-muted';
     }
     return this.session.status === 'running' ? 'bg-status-success' : 'bg-status-warning';
   }
@@ -418,7 +418,7 @@ export class SessionHeader extends LitElement {
                 
                 <!-- Terminal size button -->
                 <button
-                  class="bg-bg-tertiary border border-border rounded-lg px-3 py-2 font-mono text-xs text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0 width-selector-button"
+                  class="bg-bg-tertiary border border-border rounded-lg px-3 py-2 font-mono text-xs text-text-muted transition-all duration-200 hover:text-primary hover:bg-surface-hover hover:border-primary hover:shadow-sm flex-shrink-0 width-selector-button"
                   @click=${() => this.onMaxWidthToggle?.()}
                   title="${this.widthTooltip}"
                 >

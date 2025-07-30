@@ -247,7 +247,7 @@ export class FilePicker extends LitElement {
     }
 
     return html`
-      <div class="fixed inset-0 bg-bg bg-opacity-80 backdrop-blur-sm flex items-center justify-center animate-fade-in" style="z-index: ${Z_INDEX.FILE_PICKER};" @click=${this.handleCancel}>
+      <div class="fixed inset-0 bg-bg/80 backdrop-blur-sm flex items-center justify-center animate-fade-in" style="z-index: ${Z_INDEX.FILE_PICKER};" @click=${this.handleCancel}>
         <div class="bg-elevated border border-border/50 rounded-xl shadow-2xl p-8 m-4 max-w-sm w-full animate-scale-in" @click=${(e: Event) => e.stopPropagation()}>
           <h3 class="text-xl font-bold text-primary mb-6">
             Select File
@@ -258,10 +258,10 @@ export class FilePicker extends LitElement {
               ? html`
             <div class="mb-6">
               <div class="flex items-center justify-between mb-3">
-                <span class="text-sm text-muted font-mono">Uploading...</span>
+                <span class="text-sm text-text-muted font-mono">Uploading...</span>
                 <span class="text-sm text-primary font-mono font-medium">${Math.round(this.uploadProgress)}%</span>
               </div>
-              <div class="w-full bg-secondary rounded-full h-2 overflow-hidden">
+              <div class="w-full bg-bg-secondary rounded-full h-2 overflow-hidden">
                 <div 
                   class="bg-gradient-to-r from-primary to-primary-light h-2 rounded-full transition-all duration-300 shadow-glow-sm" 
                   style="width: ${this.uploadProgress}%"
@@ -289,7 +289,7 @@ export class FilePicker extends LitElement {
             <button
               id="file-picker-cancel-button"
               @click=${this.handleCancel}
-              class="w-full bg-secondary border border-border/50 text-primary font-mono py-3 px-6 rounded-lg transition-all duration-200 hover:bg-surface hover:border-primary active:scale-95"
+              class="w-full bg-bg-secondary border border-border/50 text-primary font-mono py-3 px-6 rounded-lg transition-all duration-200 hover:bg-surface hover:border-primary active:scale-95"
               ?disabled=${this.uploading}
             >
               Cancel

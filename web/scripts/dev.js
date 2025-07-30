@@ -109,12 +109,12 @@ for (let i = 0; i < allArgs.length; i++) {
 console.log('Initial build...');
 require('child_process').execSync('node scripts/ensure-dirs.js', { stdio: 'inherit' });
 require('child_process').execSync('node scripts/copy-assets.js', { stdio: 'inherit' });
-require('child_process').execSync('pnpm exec tailwindcss -i ./src/client/styles.css -o ./public/bundle/styles.css', { stdio: 'inherit' });
+require('child_process').execSync('pnpm exec postcss ./src/client/styles.css -o ./public/bundle/styles.css', { stdio: 'inherit' });
 
 // Build the command parts
 const commands = [
   // Watch CSS
-  ['pnpm', ['exec', 'tailwindcss', '-i', './src/client/styles.css', '-o', './public/bundle/styles.css', '--watch']],
+  ['pnpm', ['exec', 'postcss', './src/client/styles.css', '-o', './public/bundle/styles.css', '--watch']],
   // Watch assets
   ['pnpm', ['exec', 'chokidar', 'src/client/assets/**/*', '-c', 'node scripts/copy-assets.js']],
 ];

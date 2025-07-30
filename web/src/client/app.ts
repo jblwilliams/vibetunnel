@@ -1757,7 +1757,7 @@ export class VibeTunnelApp extends LitElement {
               <div
                 class="fixed inset-0 sm:hidden transition-all ${
                   this.isInSidebarDismissMode
-                    ? 'bg-bg bg-opacity-50 backdrop-blur-sm'
+                    ? 'bg-bg/50 backdrop-blur-sm'
                     : 'bg-transparent pointer-events-none'
                 }"
                 style="z-index: ${Z_INDEX.MOBILE_OVERLAY}; transition-duration: ${TRANSITIONS.MOBILE_SLIDE}ms;"

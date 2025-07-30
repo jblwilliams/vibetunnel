@@ -405,7 +405,7 @@ export class FileBrowser extends LitElement {
   private renderPreview() {
     if (this.previewLoading) {
       return html`
-        <div class="flex items-center justify-center h-full text-muted">
+        <div class="flex items-center justify-center h-full text-text-muted">
           Loading preview...
         </div>
       `;
@@ -417,7 +417,7 @@ export class FileBrowser extends LitElement {
 
     if (!this.preview) {
       return html`
-        <div class="flex flex-col items-center justify-center h-full text-muted">
+        <div class="flex flex-col items-center justify-center h-full text-text-muted">
           ${UIIcons.preview}
           <div>Select a file to preview</div>
         </div>
@@ -451,11 +451,11 @@ export class FileBrowser extends LitElement {
 
       case 'binary':
         return html`
-          <div class="flex flex-col items-center justify-center h-full text-muted">
+          <div class="flex flex-col items-center justify-center h-full text-text-muted">
             ${UIIcons.binary}
             <div class="text-lg mb-2">Binary File</div>
             <div class="text-sm">${this.preview.humanSize || `${this.preview.size} bytes`}</div>
-            <div class="text-sm text-muted mt-2">
+            <div class="text-sm text-text-muted mt-2">
               ${this.preview.mimeType || 'Unknown type'}
             </div>
           </div>
@@ -467,7 +467,7 @@ export class FileBrowser extends LitElement {
     // For new files (added or untracked), we might not have a diff but we have diffContent
     if (!this.diffContent && (!this.diff || !this.diff.diff)) {
       return html`
-        <div class="flex items-center justify-center h-full text-muted">
+        <div class="flex items-center justify-center h-full text-text-muted">
           No changes in this file
         </div>
       `;
@@ -496,7 +496,7 @@ export class FileBrowser extends LitElement {
     return html`
       <div class="overflow-auto h-full p-4 font-mono text-xs">
         ${lines.map((line) => {
-          let className = 'text-muted';
+          let className = 'text-text-muted';
           if (line.startsWith('+')) className = 'text-status-success bg-status-success/10';
           else if (line.startsWith('-')) className = 'text-status-error bg-status-error/10';
           else if (line.startsWith('@@')) className = 'text-status-info font-semibold';
@@ -518,7 +518,7 @@ export class FileBrowser extends LitElement {
         ${
           this.isMobile && this.mobileView === 'preview'
             ? html`
-              <div class="absolute top-1/2 left-2 -translate-y-1/2 text-muted opacity-50">
+              <div class="absolute top-1/2 left-2 -translate-y-1/2 text-text-muted opacity-50">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     stroke-linecap="round"
@@ -537,12 +537,12 @@ export class FileBrowser extends LitElement {
         >
           <!-- Compact Header (like session-view) -->
           <div
-            class="flex items-center justify-between px-3 py-2 border-b border-border/50 text-sm min-w-0 bg-secondary"
+            class="flex items-center justify-between px-3 py-2 border-b border-border/50 text-sm min-w-0 bg-bg-secondary"
             style="padding-top: max(0.5rem, env(safe-area-inset-top)); padding-left: max(0.75rem, env(safe-area-inset-left)); padding-right: max(0.75rem, env(safe-area-inset-right));"
           >
             <div class="flex items-center gap-3 min-w-0 flex-1">
               <button
-                class="text-muted hover:text-primary font-mono text-xs px-2 py-1 flex-shrink-0 transition-colors flex items-center gap-1"
+                class="text-text-muted hover:text-primary font-mono text-xs px-2 py-1 flex-shrink-0 transition-colors flex items-center gap-1"
                 @click=${this.handleCancel}
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -585,7 +585,7 @@ export class FileBrowser extends LitElement {
                 ${
                   this.gitStatus?.branch
                     ? html`
-                      <span class="text-muted text-xs flex items-center gap-1 font-mono flex-shrink-0">
+                      <span class="text-text-muted text-xs flex items-center gap-1 font-mono flex-shrink-0">
                         ${UIIcons.git} ${this.gitStatus.branch}
                       </span>
                     `
@@ -614,16 +614,16 @@ export class FileBrowser extends LitElement {
             <div
               class="${this.isMobile && this.mobileView === 'preview' ? 'hidden' : ''} ${
                 this.isMobile ? 'w-full' : 'w-80'
-              } bg-secondary border-r border-border/50 flex flex-col"
+              } bg-bg-secondary border-r border-border/50 flex flex-col"
             >
               <!-- File list header with toggles -->
               <div
-                class="bg-secondary border-b border-border/50 p-3 flex items-center justify-between"
+                class="bg-bg-secondary border-b border-border/50 p-3 flex items-center justify-between"
               >
                 <div class="flex gap-2">
                   <button
                     class="btn-secondary text-xs px-2 py-1 font-mono ${
-                      this.gitFilter === 'changed' ? 'bg-primary text-text-bright' : ''
+                      this.gitFilter === 'changed' ? 'bg-primary text-bg' : ''
                     }"
                     @click=${this.toggleGitFilter}
                     title="Show only Git changes"
@@ -632,7 +632,7 @@ export class FileBrowser extends LitElement {
                   </button>
                   <button
                     class="btn-secondary text-xs px-2 py-1 font-mono ${
-                      this.showHidden ? 'bg-primary text-text-bright' : ''
+                      this.showHidden ? 'bg-primary text-bg' : ''
                     }"
                     @click=${this.toggleHidden}
                     title="Show hidden files"
@@ -649,7 +649,7 @@ export class FileBrowser extends LitElement {
                 ${
                   this.loading
                     ? html`
-                      <div class="flex items-center justify-center h-full text-muted">
+                      <div class="flex items-center justify-center h-full text-text-muted">
                         Loading...
                       </div>
                     `
@@ -662,7 +662,7 @@ export class FileBrowser extends LitElement {
                               @click=${this.handleParentClick}
                             >
                               ${getParentDirectoryIcon()}
-                              <span class="text-muted">..</span>
+                              <span class="text-text-muted">..</span>
                             </div>
                           `
                           : ''
@@ -684,7 +684,7 @@ export class FileBrowser extends LitElement {
                                 file.isSymlink
                                   ? html`
                                     <svg
-                                      class="w-3 h-3 text-muted absolute -bottom-1 -right-1"
+                                      class="w-3 h-3 text-text-muted absolute -bottom-1 -right-1">
                                       fill="currentColor"
                                       viewBox="0 0 20 20"
                                     >
@@ -726,7 +726,7 @@ export class FileBrowser extends LitElement {
                 this.selectedFile
                   ? html`
                     <div
-                      class="bg-secondary border-b border-border/50 p-3 ${
+                      class="bg-bg-secondary border-b border-border/50 p-3 ${
                         this.isMobile ? 'space-y-2' : 'flex items-center justify-between'
                       }"
                     >
@@ -738,7 +738,7 @@ export class FileBrowser extends LitElement {
                                 @click=${() => {
                                   this.mobileView = 'list';
                                 }}
-                                class="text-muted hover:text-primary transition-colors flex-shrink-0"
+                                class="text-text-muted hover:text-primary transition-colors flex-shrink-0"
                                 title="Back to files"
                               >
                                 <svg
@@ -821,7 +821,7 @@ export class FileBrowser extends LitElement {
                             ? html`
                               <button
                                 class="btn-secondary text-xs px-2 py-1 font-mono ${
-                                  this.showDiff ? 'bg-primary text-text-bright' : ''
+                                  this.showDiff ? 'bg-primary text-bg' : ''
                                 } ${
                                   this.isMobile &&
                                   this.selectedFile.type === 'file' &&

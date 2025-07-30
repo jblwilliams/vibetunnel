@@ -174,7 +174,7 @@ export class TerminalSettingsModal extends LitElement {
           <div class="flex items-center justify-between mb-6">
             <h2 id="terminal-settings-title" class="text-lg font-semibold text-text-bright">Terminal Settings</h2>
             <button
-              class="text-muted hover:text-primary transition-colors p-1"
+              class="text-text-muted hover:text-primary transition-colors p-1"
               @click=${() => this.handleClose()}
               title="Close"
               aria-label="Close terminal settings"

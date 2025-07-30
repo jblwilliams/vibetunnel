@@ -385,7 +385,7 @@ export class Settings extends LitElement {
           <div class="p-4 pb-4 border-b border-border/50 relative flex-shrink-0">
             <h2 class="text-primary text-lg font-bold">Settings</h2>
             <button
-              class="absolute top-4 right-4 text-muted hover:text-primary transition-colors p-1"
+              class="absolute top-4 right-4 text-text-muted hover:text-primary transition-colors p-1"
               @click=${this.handleClose}
               title="Close"
               aria-label="Close settings"
@@ -431,7 +431,7 @@ export class Settings extends LitElement {
         ${
           !this.isNotificationsSupported
             ? html`
-              <div class="p-4 bg-status-warning bg-opacity-10 border border-status-warning rounded-lg">
+              <div class="p-4 bg-status-warning/10 border border-status-warning rounded-lg">
                 ${
                   isIOSSafari && !isStandalone
                     ? html`
@@ -452,7 +452,7 @@ export class Settings extends LitElement {
             `
             : html`
               <!-- Main toggle -->
-              <div class="flex items-center justify-between p-4 bg-tertiary rounded-lg border border-border/50">
+              <div class="flex items-center justify-between p-4 bg-bg-tertiary rounded-lg border border-border/50">
                 <div class="flex-1">
                   <label class="text-primary font-medium">Enable Notifications</label>
                   <p class="text-muted text-xs mt-1">
@@ -482,8 +482,8 @@ export class Settings extends LitElement {
                     <!-- Notification types -->
                     <div class="mt-4 space-y-4">
                       <div>
-                        <h4 class="text-sm font-medium text-muted mb-3">Notification Types</h4>
-                        <div class="space-y-2 bg-base rounded-lg p-3">
+                        <h4 class="text-sm font-medium text-text-muted mb-3">Notification Types</h4>
+                        <div class="space-y-2 bg-bg rounded-lg p-3">
                           ${this.renderNotificationToggle('sessionExit', 'Session Exit', 'When a session terminates or crashes (shows exit code)')}
                           ${this.renderNotificationToggle('sessionStart', 'Session Start', 'When a new session starts (useful for shared terminals)')}
                           ${this.renderNotificationToggle('commandError', 'Session Errors', 'When commands fail with non-zero exit codes')}
@@ -495,8 +495,8 @@ export class Settings extends LitElement {
 
                       <!-- Sound and vibration -->
                       <div>
-                        <h4 class="text-sm font-medium text-muted mb-3">Notification Behavior</h4>
-                        <div class="space-y-2 bg-base rounded-lg p-3">
+                        <h4 class="text-sm font-medium text-text-muted mb-3">Notification Behavior</h4>
+                        <div class="space-y-2 bg-bg rounded-lg p-3">
                           ${this.renderNotificationToggle('soundEnabled', 'Sound', 'Play a notification sound when alerts are triggered')}
                           ${this.renderNotificationToggle('vibrationEnabled', 'Vibration', 'Vibrate device with notifications (mobile devices only)')}
                         </div>
@@ -562,7 +562,7 @@ export class Settings extends LitElement {
         ${
           this.mediaState.isMobile
             ? html`
-              <div class="flex items-center justify-between p-4 bg-tertiary rounded-lg border border-border/50">
+              <div class="flex items-center justify-between p-4 bg-bg-tertiary rounded-lg border border-border/50">
                 <div class="flex-1">
                   <label class="text-primary font-medium">
                     Use Direct Keyboard
@@ -592,7 +592,7 @@ export class Settings extends LitElement {
 
 
         <!-- Repository Base Path -->
-        <div class="p-4 bg-tertiary rounded-lg border border-border/50">
+        <div class="p-4 bg-bg-tertiary rounded-lg border border-border/50">
           <div class="mb-3">
             <div class="flex items-center justify-between">
               <label class="text-primary font-medium">Repository Base Path</label>

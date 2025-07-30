@@ -955,10 +955,10 @@ export class SessionView extends LitElement {
   render() {
     if (!this.session) {
       return html`
-        <div class="fixed inset-0 bg-base flex items-center justify-center">
+        <div class="fixed inset-0 bg-bg flex items-center justify-center">
           <div class="text-primary font-mono text-center">
             <div class="text-2xl mb-2">${this.loadingAnimationManager.getLoadingText()}</div>
-            <div class="text-sm text-muted">Waiting for session...</div>
+            <div class="text-sm text-text-muted">Waiting for session...</div>
           </div>
         </div>
       `;
@@ -1130,11 +1130,11 @@ export class SessionView extends LitElement {
               ? html`
                 <!-- Enhanced Loading overlay -->
                 <div
-                  class="absolute inset-0 bg-bg bg-opacity-90 backdrop-filter backdrop-blur-sm flex items-center justify-center z-10 animate-fade-in"
+                  class="absolute inset-0 bg-bg/90 backdrop-filter backdrop-blur-sm flex items-center justify-center z-10 animate-fade-in"
                 >
                   <div class="text-primary font-mono text-center">
                     <div class="text-2xl mb-3 text-primary animate-pulse-primary">${this.loadingAnimationManager.getLoadingText()}</div>
-                    <div class="text-sm text-muted">Connecting to session...</div>
+                    <div class="text-sm text-text-muted">Connecting to session...</div>
                   </div>
                 </div>
               `
@@ -1179,7 +1179,7 @@ export class SessionView extends LitElement {
           ${
             uiState.isMobile && !uiState.showMobileInput && !uiState.useDirectKeyboard
               ? html`
-                <div class="p-4 bg-secondary">
+                <div class="p-4 bg-bg-secondary">
                 <!-- First row: Arrow keys -->
                 <div class="flex gap-2 mb-2">
                   <button

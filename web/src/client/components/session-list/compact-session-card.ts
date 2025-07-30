@@ -72,7 +72,7 @@ export class CompactSessionCard extends LitElement {
 
     if (session.activityStatus?.isActive === false) {
       // Idle
-      return html`<div class="w-2.5 h-2.5 rounded-full bg-status-success ring-1 ring-status-success ring-opacity-50"></div>`;
+      return html`<div class="w-2.5 h-2.5 rounded-full bg-status-success ring-1 ring-status-success/50"></div>`;
     }
 
     // Active
