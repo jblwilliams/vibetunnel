@@ -426,14 +426,14 @@ describe('ConfigService', () => {
       // Should return DEFAULT_NOTIFICATION_PREFERENCES instead of undefined
       expect(preferences).toEqual({
         enabled: false, // Master switch is OFF by default
-        sessionStart: true,
+        sessionStart: false,
         sessionExit: true,
-        commandCompletion: true,
+        commandCompletion: false,
         commandError: true,
         bell: true,
         claudeTurn: false,
         soundEnabled: true,
-        vibrationEnabled: true,
+        vibrationEnabled: false,
       });
     });
 
