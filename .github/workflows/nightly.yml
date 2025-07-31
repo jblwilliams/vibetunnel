@@ -149,7 +149,7 @@ jobs:
         set -o pipefail && \
         xcodebuild build \
           -workspace VibeTunnel.xcworkspace \
-          -scheme VibeTunnel-Mac \
+          -scheme VibeTunnel \
           -configuration Release \
           -destination "generic/platform=macOS" \
           -archivePath build/VibeTunnel.xcarchive \
@@ -175,7 +175,7 @@ jobs:
         set -o pipefail && \
         xcodebuild test \
           -workspace VibeTunnel.xcworkspace \
-          -scheme VibeTunnel-Mac \
+          -scheme VibeTunnel \
           -configuration Release \
           -destination "platform=macOS" \
           -enableCodeCoverage YES \

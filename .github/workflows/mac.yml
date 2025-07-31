@@ -121,7 +121,7 @@ jobs:
       run: |
         echo "Resolving Swift package dependencies..."
         # Workspace is at root level
-        xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace -scheme VibeTunnel-Mac || echo "Dependency resolution completed"
+        xcodebuild -resolvePackageDependencies -workspace VibeTunnel.xcworkspace -scheme VibeTunnel || echo "Dependency resolution completed"
         
         # Debug: List available schemes
         echo "=== Available schemes ==="
@@ -139,7 +139,7 @@ jobs:
         
         set -o pipefail && xcodebuild build \
           -workspace VibeTunnel.xcworkspace \
-          -scheme VibeTunnel-Mac \
+          -scheme VibeTunnel \
           -configuration $BUILD_CONFIG \
           -destination "platform=macOS" \
           -showBuildTimingSummary \
@@ -195,7 +195,7 @@ jobs:
         set -o pipefail && \
         xcodebuild test \
           -workspace VibeTunnel.xcworkspace \
-          -scheme VibeTunnel-Mac \
+          -scheme VibeTunnel \
           -configuration $TEST_CONFIG \
           -destination "platform=macOS" \
           -enableCodeCoverage $ENABLE_COVERAGE \
