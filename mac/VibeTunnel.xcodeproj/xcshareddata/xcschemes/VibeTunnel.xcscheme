@@ -18,7 +18,7 @@
                BlueprintIdentifier = "788687F02DFF4FCB00B22C15"
                BuildableName = "VibeTunnel.app"
                BlueprintName = "VibeTunnel"
-               ReferencedContainer = "container:VibeTunnel-Mac.xcodeproj">
+               ReferencedContainer = "container:VibeTunnel.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -27,19 +27,26 @@
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      shouldUseLaunchSchemeArgsEnv = "YES">
-      <TestPlans>
-         <TestPlanReference
-            reference = "container:VibeTunnel/VibeTunnel-Mac.xctestplan"
-            default = "YES">
-         </TestPlanReference>
-      </TestPlans>
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      shouldAutocreateTestPlan = "YES">
+      <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "788687FD2DFF4FCB00B22C15"
+               BuildableName = "VibeTunnelTests.xctest"
+               BlueprintName = "VibeTunnelTests"
+               ReferencedContainer = "container:VibeTunnel.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+      </Testables>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      enableASanStackUseAfterReturn = "NO"
       launchStyle = "0"
       useCustomWorkingDirectory = "NO"
       ignoresPersistentStateOnLaunch = "NO"
@@ -53,16 +60,9 @@
             BlueprintIdentifier = "788687F02DFF4FCB00B22C15"
             BuildableName = "VibeTunnel.app"
             BlueprintName = "VibeTunnel"
-            ReferencedContainer = "container:VibeTunnel-Mac.xcodeproj">
+            ReferencedContainer = "container:VibeTunnel.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <EnvironmentVariables>
-         <EnvironmentVariable
-            key = "VIBETUNNEL_DEBUG"
-            value = "1"
-            isEnabled = "YES">
-         </EnvironmentVariable>
-      </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -77,7 +77,7 @@
             BlueprintIdentifier = "788687F02DFF4FCB00B22C15"
             BuildableName = "VibeTunnel.app"
             BlueprintName = "VibeTunnel"
-            ReferencedContainer = "container:VibeTunnel-Mac.xcodeproj">
+            ReferencedContainer = "container:VibeTunnel.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

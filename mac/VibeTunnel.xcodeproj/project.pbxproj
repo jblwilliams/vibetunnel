@@ -170,7 +170,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 788687EC2DFF4FCB00B22C15 /* Build configuration list for PBXProject "VibeTunnel-Mac" */;
+			buildConfigurationList = 788687EC2DFF4FCB00B22C15 /* Build configuration list for PBXProject "VibeTunnel" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -539,7 +539,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		788687EC2DFF4FCB00B22C15 /* Build configuration list for PBXProject "VibeTunnel-Mac" */ = {
+		788687EC2DFF4FCB00B22C15 /* Build configuration list for PBXProject "VibeTunnel" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				788688102DFF4FCC00B22C15 /* Debug */,

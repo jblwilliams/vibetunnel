@@ -2,7 +2,7 @@
 <Workspace
    version = "1.0">
    <FileRef
-      location = "group:mac/VibeTunnel-Mac.xcodeproj">
+      location = "group:mac/VibeTunnel.xcodeproj">
    </FileRef>
    <FileRef
       location = "group:ios/VibeTunnel-iOS.xcodeproj">
