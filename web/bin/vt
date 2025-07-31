@@ -42,7 +42,10 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
                 if [ -f "$VT_SCRIPT" ] && [ -x "$VT_SCRIPT" ]; then
                     VT_REAL_PATH="$(resolve_symlink_macos "$VT_SCRIPT")"
                     if [ "$SCRIPT_REAL_PATH" != "$VT_REAL_PATH" ]; then
-                        exec "$VT_SCRIPT" "$@"
+                        # Don't exec to the app bundle vt script - use the binary instead
+                        # This allows our self-healing to work
+                        # exec "$VT_SCRIPT" "$@"
+                        true  # Continue to use the binary
                     fi
                 fi
                 APP_PATH="$CANDIDATE"
@@ -78,7 +81,10 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
                 if [ -f "$VT_SCRIPT" ] && [ -x "$VT_SCRIPT" ]; then
                     VT_REAL_PATH="$(resolve_symlink_macos "$VT_SCRIPT")"
                     if [ "$SCRIPT_REAL_PATH" != "$VT_REAL_PATH" ]; then
-                        exec "$VT_SCRIPT" "$@"
+                        # Don't exec to the app bundle vt script - use the binary instead
+                        # This allows our self-healing to work
+                        # exec "$VT_SCRIPT" "$@"
+                        true  # Continue to use the binary
                     fi
                 fi
                 APP_PATH="$CANDIDATE"
@@ -354,6 +360,69 @@ EOF
     fi
 }
 
+# Function to execute with self-healing fallback
+exec_with_fallback() {
+    # Save the command for potential fallback
+    local SAVED_CMD=("$@")
+    
+    # Try running with VibeTunnel
+    local START_TIME=$(date +%s%N 2>/dev/null || echo "0")  # nanoseconds if available
+    
+    # Run the command (without exec to capture exit code)
+    "$@"
+    local EXIT_CODE=$?
+    
+    local END_TIME=$(date +%s%N 2>/dev/null || echo "1000000000")  # 1 second if date doesn't support nanoseconds
+    
+    # Calculate duration in milliseconds
+    local DURATION=0
+    if [[ "$START_TIME" != "0" && "$END_TIME" != "1000000000" ]]; then
+        DURATION=$(( (END_TIME - START_TIME) / 1000000 ))
+    fi
+    
+    # Check if it was killed by macOS (exit code 137 or very quick failure)
+    if [[ $EXIT_CODE -eq 137 ]] || ([[ $EXIT_CODE -ne 0 ]] && [[ $DURATION -lt 100 ]]); then
+        # Log the error
+        echo "[vt] VibeTunnel binary killed by macOS (exit code: $EXIT_CODE). Running command directly." >&2
+        
+        # Extract the actual command (skip vibetunnel binary and fwd)
+        local FALLBACK_CMD=()
+        local SKIP_NEXT=0
+        local IN_COMMAND=0
+        
+        for arg in "${SAVED_CMD[@]}"; do
+            # Skip the vibetunnel binary path
+            if [[ "$arg" == "$VIBETUNNEL_BIN" ]]; then
+                continue
+            fi
+            # Skip "fwd"
+            if [[ "$arg" == "fwd" ]]; then
+                IN_COMMAND=1
+                continue
+            fi
+            # Skip verbosity and title-mode args
+            if [[ "$arg" == "--verbosity" || "$arg" == "--title-mode" ]]; then
+                SKIP_NEXT=1
+                continue
+            fi
+            if [[ $SKIP_NEXT -eq 1 ]]; then
+                SKIP_NEXT=0
+                continue
+            fi
+            # Add to fallback command
+            if [[ $IN_COMMAND -eq 1 ]]; then
+                FALLBACK_CMD+=("$arg")
+            fi
+        done
+        
+        # Execute the original command directly
+        exec "${FALLBACK_CMD[@]}"
+    else
+        # Normal exit - return the exit code
+        exit $EXIT_CODE
+    fi
+}
+
 # Function to resolve command through user's shell
 resolve_command() {
     local user_shell="${SHELL:-/bin/bash}"
@@ -367,15 +436,15 @@ resolve_command() {
     case "$shell_name" in
         zsh)
             # For zsh, we need interactive mode to get aliases
-            exec "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -i -c "$(printf '%q ' "$cmd" "$@")"
+            exec_with_fallback "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -i -c "$(printf '%q ' "$cmd" "$@")"
             ;;
         bash)
             # For bash, expand aliases in non-interactive mode
-            exec "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -c "shopt -s expand_aliases; source ~/.bashrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true; $(printf '%q ' "$cmd" "$@")"
+            exec_with_fallback "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -c "shopt -s expand_aliases; source ~/.bashrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || true; $(printf '%q ' "$cmd" "$@")"
             ;;
         *)
             # Generic shell handling
-            exec "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -c "$(printf '%q ' "$cmd" "$@")"
+            exec_with_fallback "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$user_shell" -c "$(printf '%q ' "$cmd" "$@")"
             ;;
     esac
 }
@@ -556,12 +625,12 @@ fi
 if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
     if [[ "$NO_SHELL_WRAP" == "true" ]]; then
         # Execute directly without shell wrapper
-        exec "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
+        exec_with_fallback "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
     else
         # Check if the first argument is a real binary
         if which "$1" >/dev/null 2>&1; then
             # It's a real binary, execute directly
-            exec "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
+            exec_with_fallback "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
         else
             # Not a real binary, try alias resolution
             resolve_command "$@"
@@ -569,5 +638,5 @@ if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
     fi
 else
     # Run with fwd command (original behavior for options)
-    exec "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
+    exec_with_fallback "$VIBETUNNEL_BIN" fwd ${VERBOSITY_ARGS:+$VERBOSITY_ARGS} ${TITLE_MODE_ARGS:+"$TITLE_MODE_ARGS"} "$@"
 fi
