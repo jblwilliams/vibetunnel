@@ -143,7 +143,7 @@ struct VibeTunnelApp: App {
 /// URL scheme handling, and user notification management. Acts as the central
 /// coordinator for application-wide events and services.
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUserNotificationCenterDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate {
     // Needed for menu item highlight hack
     weak static var shared: AppDelegate?
     override init() {
@@ -204,9 +204,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
 
         // Initialize Sparkle updater manager
         sparkleUpdaterManager = SparkleUpdaterManager.shared
-
-        // Set up notification center delegate
-        UNUserNotificationCenter.current().delegate = self
 
         // Initialize dock icon visibility through DockIconManager
         DockIconManager.shared.updateDockVisibility()
@@ -482,36 +479,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @preconcurrency UNUser
         )
 
         logger.info("🚨 applicationWillTerminate completed quickly")
-    }
-
-    // MARK: - UNUserNotificationCenterDelegate
-
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) {
-        logger.info("Received notification response: \(response.actionIdentifier)")
-
-        // Handle update reminder actions
-        if response.notification.request.content.categoryIdentifier == "UPDATE_REMINDER" {
-            sparkleUpdaterManager?.userDriverDelegate?.handleNotificationAction(
-                response.actionIdentifier,
-                userInfo: response.notification.request.content.userInfo
-            )
-        }
-
-        completionHandler()
-    }
-
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification,
-        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions)
-            -> Void
-    ) {
-        // Show notifications even when app is in foreground
-        completionHandler([.banner, .sound])
     }
 
     /// Set up lightweight cleanup system for cloudflared processes

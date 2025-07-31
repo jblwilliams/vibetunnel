@@ -45,7 +45,8 @@ describe('ZellijManager', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Reset singleton instance
-    (ZellijManager as any).instance = undefined;
+    // @ts-ignore - accessing private instance for test reset
+    ZellijManager.instance = undefined;
     zellijManager = ZellijManager.getInstance(mockPtyManager);
   });
 

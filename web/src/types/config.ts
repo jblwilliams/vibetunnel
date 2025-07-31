@@ -71,14 +71,30 @@ export const DEFAULT_QUICK_START_COMMANDS: QuickStartCommand[] = [
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   enabled: false,
-  sessionStart: true,
+  sessionStart: false,
   sessionExit: true,
-  commandCompletion: true,
+  commandCompletion: false,
   commandError: true,
   bell: true,
   claudeTurn: false,
   soundEnabled: true,
-  vibrationEnabled: true,
+  vibrationEnabled: false,
+};
+
+/**
+ * Recommended notification preferences for new users
+ * These are sensible defaults when notifications are enabled
+ */
+export const RECOMMENDED_NOTIFICATION_PREFERENCES: NotificationPreferences = {
+  enabled: true,
+  sessionStart: false,
+  sessionExit: true,
+  commandCompletion: false,
+  commandError: true,
+  bell: true,
+  claudeTurn: true,
+  soundEnabled: true,
+  vibrationEnabled: false,
 };
 
 export const DEFAULT_CONFIG: VibeTunnelConfig = {

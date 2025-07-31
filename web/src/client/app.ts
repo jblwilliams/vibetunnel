@@ -527,7 +527,18 @@ export class VibeTunnelApp extends LitElement {
 
       // Initialize push notification service always
       // It handles its own permission checks and user preferences
+      logger.log('Initializing push notification service...');
       await pushNotificationService.initialize();
+
+      // Log the initialization status
+      const isSupported = pushNotificationService.isSupported();
+      const isSecure = window.isSecureContext;
+      logger.log('Push notification initialization complete:', {
+        isSupported,
+        isSecureContext: isSecure,
+        location: window.location.hostname,
+        protocol: window.location.protocol,
+      });
 
       // Initialize control event service for real-time notifications
       this.controlEventService = getControlEventService(authClient);

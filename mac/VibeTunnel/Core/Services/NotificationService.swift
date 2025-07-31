@@ -10,14 +10,16 @@ import os.log
 /// command completions, and errors, then displays them as native macOS notifications.
 @MainActor
 @Observable
-final class NotificationService: NSObject {
+final class NotificationService: NSObject, @preconcurrency UNUserNotificationCenterDelegate {
     @MainActor
-    static let shared = NotificationService()
+    static let shared: NotificationService = {
+        // Defer initialization to avoid circular dependency
+        // This ensures ServerManager and ConfigManager are ready
+        return NotificationService()
+    }()
 
     private let logger = Logger(subsystem: "sh.vibetunnel.vibetunnel", category: "NotificationService")
     private var eventSource: EventSource?
-    private let serverManager = ServerManager.shared
-    private let configManager = ConfigManager.shared
     private var isConnected = false
     private var recentlyNotifiedSessions = Set<String>()
     private var notificationCleanupTimer: Timer?
@@ -36,6 +38,27 @@ final class NotificationService: NSObject {
         var soundEnabled: Bool
         var vibrationEnabled: Bool
 
+        // Memberwise initializer
+        init(
+            sessionStart: Bool,
+            sessionExit: Bool,
+            commandCompletion: Bool,
+            commandError: Bool,
+            bell: Bool,
+            claudeTurn: Bool,
+            soundEnabled: Bool,
+            vibrationEnabled: Bool
+        ) {
+            self.sessionStart = sessionStart
+            self.sessionExit = sessionExit
+            self.commandCompletion = commandCompletion
+            self.commandError = commandError
+            self.bell = bell
+            self.claudeTurn = claudeTurn
+            self.soundEnabled = soundEnabled
+            self.vibrationEnabled = vibrationEnabled
+        }
+
         @MainActor
         init(fromConfig configManager: ConfigManager) {
             // Load from ConfigManager - ConfigManager provides the defaults
@@ -52,34 +75,62 @@ final class NotificationService: NSObject {
 
     private var preferences: NotificationPreferences
 
+    // Dependencies (will be set after init to avoid circular dependency)
+    private weak var serverProvider: ServerManager?
+    private weak var configProvider: ConfigManager?
+    
     @MainActor
     override private init() {
-        // Load preferences from ConfigManager
-        self.preferences = NotificationPreferences(fromConfig: configManager)
-
+        // Initialize with default preferences first
+        self.preferences = NotificationPreferences(
+            sessionStart: true,
+            sessionExit: true,
+            commandCompletion: true,
+            commandError: true,
+            bell: true,
+            claudeTurn: true,
+            soundEnabled: true,
+            vibrationEnabled: true
+        )
+        
         super.init()
-        setupNotifications()
-
-        // Listen for config changes
-        listenForConfigChanges()
+        
+        // Defer dependency setup to avoid circular initialization
+        Task { @MainActor in
+            self.serverProvider = ServerManager.shared
+            self.configProvider = ConfigManager.shared
+            // Now load actual preferences
+            if let configProvider = self.configProvider {
+                self.preferences = NotificationPreferences(fromConfig: configProvider)
+            }
+            setupNotifications()
+            listenForConfigChanges()
+        }
     }
 
     /// Start monitoring server events
     func start() async {
         logger.info("🚀 NotificationService.start() called")
-
+        
+        // Set delegate here to ensure it's done at the right time
+        UNUserNotificationCenter.current().delegate = self
+        logger.info("✅ NotificationService set as UNUserNotificationCenter delegate in start()")
+        
+        // Debug: Log current delegate to verify it's set
+        let currentDelegate = UNUserNotificationCenter.current().delegate
+        logger.info("🔍 Current UNUserNotificationCenter delegate: \(String(describing: currentDelegate))")
         // Check if notifications are enabled in config
-        guard configManager.notificationsEnabled else {
+        guard let configProvider = configProvider, configProvider.notificationsEnabled else {
             logger.info("📴 Notifications are disabled in config, skipping SSE connection")
             return
         }
-
-        guard serverManager.isRunning else {
+        
+        guard let serverProvider = serverProvider, serverProvider.isRunning else {
             logger.warning("🔴 Server not running, cannot start notification service")
             return
         }
 
-        logger.info("🔔 Starting notification service - server is running on port \(self.serverManager.port)")
+        logger.info("🔔 Starting notification service - server is running on port \(serverProvider.port)")
 
         // Wait for Unix socket to be ready before connecting SSE
         // This ensures the server is fully ready to accept connections
@@ -127,6 +178,10 @@ final class NotificationService: NSObject {
     /// Request notification permissions and show test notification
     func requestPermissionAndShowTestNotification() async -> Bool {
         let center = UNUserNotificationCenter.current()
+        
+        // Debug: Log current notification settings
+        let settings = await center.notificationSettings()
+        logger.info("🔔 Current notification settings - authorizationStatus: \(settings.authorizationStatus.rawValue, privacy: .public), alertSetting: \(settings.alertSetting.rawValue, privacy: .public)")
 
         switch await authorizationStatus() {
         case .notDetermined:
@@ -136,6 +191,10 @@ final class NotificationService: NSObject {
 
                 if granted {
                     logger.info("✅ Notification permissions granted")
+                    
+                    // Debug: Log granted settings
+                    let newSettings = await center.notificationSettings()
+                    logger.info("🔔 New settings after grant - alert: \(newSettings.alertSetting.rawValue, privacy: .public), sound: \(newSettings.soundSetting.rawValue, privacy: .public), badge: \(newSettings.badgeSetting.rawValue, privacy: .public)")
 
                     // Show test notification
                     let content = UNMutableNotificationContent()
@@ -188,7 +247,7 @@ final class NotificationService: NSObject {
     /// - Parameter event: The server event to create a notification for
     func sendNotification(for event: ServerEvent) async {
         // Check master switch first
-        guard configManager.notificationsEnabled else { return }
+        guard configProvider?.notificationsEnabled ?? false else { return }
 
         // Check preferences based on event type
         switch event.type {
@@ -284,7 +343,7 @@ final class NotificationService: NSObject {
 
     /// Send a session start notification (legacy method for compatibility)
     func sendSessionStartNotification(sessionName: String) async {
-        guard configManager.notificationsEnabled && preferences.sessionStart else { return }
+        guard configProvider?.notificationsEnabled ?? false && preferences.sessionStart else { return }
 
         let content = UNMutableNotificationContent()
         content.title = "Session Started"
@@ -298,7 +357,7 @@ final class NotificationService: NSObject {
 
     /// Send a session exit notification (legacy method for compatibility)
     func sendSessionExitNotification(sessionName: String, exitCode: Int) async {
-        guard configManager.notificationsEnabled && preferences.sessionExit else { return }
+        guard configProvider?.notificationsEnabled ?? false && preferences.sessionExit else { return }
 
         let content = UNMutableNotificationContent()
         content.title = "Session Ended"
@@ -315,7 +374,7 @@ final class NotificationService: NSObject {
 
     /// Send a command completion notification (legacy method for compatibility)
     func sendCommandCompletionNotification(command: String, duration: Int) async {
-        guard configManager.notificationsEnabled && preferences.commandCompletion else { return }
+        guard configProvider?.notificationsEnabled ?? false && preferences.commandCompletion else { return }
 
         let content = UNMutableNotificationContent()
         content.title = "Your Turn"
@@ -341,7 +400,7 @@ final class NotificationService: NSObject {
 
     /// Send a generic notification
     func sendGenericNotification(title: String, body: String) async {
-        guard configManager.notificationsEnabled else { return }
+        guard configProvider?.notificationsEnabled ?? false else { return }
 
         let content = UNMutableNotificationContent()
         content.title = title
@@ -350,6 +409,30 @@ final class NotificationService: NSObject {
         content.categoryIdentifier = "GENERAL"
 
         deliverNotification(content, identifier: "generic-\(UUID().uuidString)")
+    }
+
+    /// Send a test notification for debugging and verification
+    func sendTestNotification(title: String? = nil, message: String? = nil, sessionId: String? = nil) async {
+        guard configProvider?.notificationsEnabled ?? false else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = title ?? "Test Notification"
+        content.body = message ?? "This is a test notification from VibeTunnel"
+        content.sound = getNotificationSound()
+        content.categoryIdentifier = "TEST"
+        content.interruptionLevel = .passive
+        
+        if let sessionId = sessionId {
+            content.subtitle = "Session: \(sessionId)"
+            content.userInfo = ["sessionId": sessionId, "type": "test-notification"]
+        } else {
+            content.userInfo = ["type": "test-notification"]
+        }
+
+        let identifier = "test-\(sessionId ?? UUID().uuidString)"
+        deliverNotification(content, identifier: identifier)
+        
+        logger.info("🧪 Test notification sent: \(title ?? "Test Notification") - \(message ?? "Test message")")
     }
 
     /// Open System Settings to the Notifications pane
@@ -364,7 +447,7 @@ final class NotificationService: NSObject {
         self.preferences = prefs
 
         // Update ConfigManager
-        configManager.updateNotificationPreferences(
+        configProvider?.updateNotificationPreferences(
             sessionStart: prefs.sessionStart,
             sessionExit: prefs.sessionExit,
             commandCompletion: prefs.commandCompletion,
@@ -424,7 +507,8 @@ final class NotificationService: NSObject {
     }
 
     private func connect() {
-        logger.info("🔌 NotificationService.connect() called - isConnected: \(self.isConnected)")
+        // Using interpolation to bypass privacy restrictions for debugging
+        logger.info("🔌 NotificationService.connect() called - isConnected: \(self.isConnected, privacy: .public)")
         guard !isConnected else {
             logger.info("Already connected to notification service")
             return
@@ -432,15 +516,19 @@ final class NotificationService: NSObject {
 
         // When auth mode is "none", we can connect without a token.
         // In any other auth mode, a token is required for the local Mac app to connect.
-        if serverManager.authMode != "none", serverManager.localAuthToken == nil {
-            logger
-                .error("No auth token available for notification service in auth mode '\(self.serverManager.authMode)'")
+        guard let serverProvider = self.serverProvider else {
+            logger.error("Server provider is not available")
+            return
+        }
+        
+        if serverProvider.authMode != "none", serverProvider.localAuthToken == nil {
+            logger.error("No auth token available for notification service in auth mode '\(serverProvider.authMode)'")
             return
         }
 
-        let eventsURL = "http://localhost:\(self.serverManager.port)/api/events"
-        logger.info("📡 Attempting to connect to SSE endpoint: \(eventsURL)")
-
+        let eventsURL = "http://localhost:\(serverProvider.port)/api/events"
+        // Show full URL for debugging SSE connection issues
+        logger.info("📡 Attempting to connect to SSE endpoint: \(eventsURL, privacy: .public)")
         guard let url = URL(string: eventsURL) else {
             logger.error("Invalid events URL: \(eventsURL)")
             return
@@ -454,11 +542,13 @@ final class NotificationService: NSObject {
 
         // Add authorization header if auth token is available.
         // When auth mode is "none", there's no token, and that's okay.
-        if let authToken = serverManager.localAuthToken {
+        if let authToken = serverProvider.localAuthToken {
             headers["Authorization"] = "Bearer \(authToken)"
-            logger.info("🔑 Using auth token for SSE connection")
+            // Show token prefix for debugging (first 10 chars only for security)
+            let tokenPrefix = String(authToken.prefix(10))
+            logger.info("🔑 Using auth token for SSE connection: \(tokenPrefix, privacy: .public)...")
         } else {
-            logger.info("🔓 Connecting to SSE without an auth token (auth mode: '\(self.serverManager.authMode)')")
+            logger.info("🔓 Connecting to SSE without an auth token (auth mode: '\(serverProvider.authMode)')")
         }
 
         // Add custom header to indicate this is the Mac app
@@ -468,8 +558,9 @@ final class NotificationService: NSObject {
 
         eventSource?.onOpen = { [weak self] in
             Task { @MainActor in
-                self?.logger.info("✅ Connected to notification event stream")
-                self?.isConnected = true
+                guard let self else { return }
+                self.logger.info("✅ Connected to notification event stream")
+                self.isConnected = true
                 // Post notification for UI update
                 NotificationCenter.default.post(name: .notificationServiceConnectionChanged, object: nil)
             }
@@ -477,10 +568,11 @@ final class NotificationService: NSObject {
 
         eventSource?.onError = { [weak self] error in
             Task { @MainActor in
+                guard let self else { return }
                 if let error {
-                    self?.logger.error("❌ EventSource error: \(error)")
+                    self.logger.error("❌ EventSource error: \(error)")
                 }
-                self?.isConnected = false
+                self.isConnected = false
                 // Post notification for UI update
                 NotificationCenter.default.post(name: .notificationServiceConnectionChanged, object: nil)
                 // Don't reconnect here - let server state changes trigger reconnection
@@ -489,11 +581,9 @@ final class NotificationService: NSObject {
 
         eventSource?.onMessage = { [weak self] event in
             Task { @MainActor in
-                self?.logger
-                    .info(
-                        "🎯 EventSource onMessage fired! Event type: \(event.event ?? "default"), Has data: \(event.data != nil)"
-                    )
-                self?.handleEvent(event)
+                guard let self else { return }
+                self.logger.info("🎯 EventSource onMessage fired! Event type: \(event.event ?? "default", privacy: .public), Has data: \(event.data != nil, privacy: .public)")
+                await self.handleEvent(event)
             }
         }
 
@@ -509,7 +599,7 @@ final class NotificationService: NSObject {
         NotificationCenter.default.post(name: .notificationServiceConnectionChanged, object: nil)
     }
 
-    private func handleEvent(_ event: Event) {
+    private func handleEvent(_ event: Event) async {
         guard let data = event.data else {
             logger.warning("Received event with no data")
             return
@@ -536,42 +626,42 @@ final class NotificationService: NSObject {
             switch type {
             case "session-start":
                 logger.info("🚀 Processing session-start event")
-                if configManager.notificationsEnabled && preferences.sessionStart {
+                if configProvider?.notificationsEnabled ?? false && preferences.sessionStart {
                     handleSessionStart(json)
                 } else {
                     logger.debug("Session start notifications disabled")
                 }
             case "session-exit":
                 logger.info("🏁 Processing session-exit event")
-                if configManager.notificationsEnabled && preferences.sessionExit {
+                if configProvider?.notificationsEnabled ?? false && preferences.sessionExit {
                     handleSessionExit(json)
                 } else {
                     logger.debug("Session exit notifications disabled")
                 }
             case "command-finished":
                 logger.info("✅ Processing command-finished event")
-                if configManager.notificationsEnabled && preferences.commandCompletion {
+                if configProvider?.notificationsEnabled ?? false && preferences.commandCompletion {
                     handleCommandFinished(json)
                 } else {
                     logger.debug("Command completion notifications disabled")
                 }
             case "command-error":
                 logger.info("❌ Processing command-error event")
-                if configManager.notificationsEnabled && preferences.commandError {
+                if configProvider?.notificationsEnabled ?? false && preferences.commandError {
                     handleCommandError(json)
                 } else {
                     logger.debug("Command error notifications disabled")
                 }
             case "bell":
                 logger.info("🔔 Processing bell event")
-                if configManager.notificationsEnabled && preferences.bell {
+                if configProvider?.notificationsEnabled ?? false && preferences.bell {
                     handleBell(json)
                 } else {
                     logger.debug("Bell notifications disabled")
                 }
             case "claude-turn":
                 logger.info("💬 Processing claude-turn event")
-                if configManager.notificationsEnabled && preferences.claudeTurn {
+                if configProvider?.notificationsEnabled ?? false && preferences.claudeTurn {
                     handleClaudeTurn(json)
                 } else {
                     logger.debug("Claude turn notifications disabled")
@@ -586,7 +676,7 @@ final class NotificationService: NSObject {
                 logger.warning("Unknown event type: \(type)")
             }
         } catch {
-            logger.error("Failed to parse event data: \(error)")
+            logger.error("Failed to parse legacy event data: \(error)")
         }
     }
 
@@ -727,8 +817,8 @@ final class NotificationService: NSObject {
     }
 
     private func handleTestNotification(_ json: [String: Any]) {
-        logger.info("🧪 Handling test notification from server")
-
+        // Debug: Show full test notification data
+        logger.info("🧪 Handling test notification from server - JSON: \(json, privacy: .public)")
         let title = json["title"] as? String ?? "VibeTunnel Test"
         let body = json["body"] as? String ?? "Server-side notifications are working correctly!"
         let message = json["message"] as? String
@@ -773,11 +863,12 @@ final class NotificationService: NSObject {
     private func deliverNotification(_ content: UNNotificationContent, identifier: String) {
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: nil)
 
-        UNUserNotificationCenter.current().add(request) { [weak self] error in
-            if let error {
-                self?.logger.error("Failed to deliver notification: \(error)")
-            } else {
-                self?.logger.debug("Notification delivered: \(identifier)")
+        Task { @MainActor in
+            do {
+                try await UNUserNotificationCenter.current().add(request)
+                self.logger.debug("Notification delivered: \(identifier, privacy: .public)")
+            } catch {
+                self.logger.error("Failed to deliver notification: \(error, privacy: .public) for identifier: \(identifier, privacy: .public)")
             }
         }
     }
@@ -790,7 +881,8 @@ final class NotificationService: NSObject {
         deliverNotification(content, identifier: identifier)
 
         // Schedule automatic dismissal
-        DispatchQueue.main.asyncAfter(deadline: .now() + seconds) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
             UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [identifier])
         }
     }
@@ -798,17 +890,21 @@ final class NotificationService: NSObject {
     // MARK: - Cleanup
 
     private func scheduleNotificationCleanup(for key: String, after seconds: TimeInterval) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
-            self?.recentlyNotifiedSessions.remove(key)
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            self.recentlyNotifiedSessions.remove(key)
         }
     }
 
     /// Send a test notification through the server to verify the full flow
+    @MainActor
     func sendServerTestNotification() async {
         logger.info("🧪 Sending test notification through server...")
-
+        // Show thread details for debugging dispatch issues
+        logger.info("🧵 Current thread: \(Thread.current, privacy: .public)")
+        logger.info("🧵 Is main thread: \(Thread.isMainThread, privacy: .public)")
         // Check if server is running
-        guard serverManager.isRunning else {
+        guard serverProvider?.isRunning ?? false else {
             logger.error("❌ Cannot send test notification - server is not running")
             return
         }
@@ -816,32 +912,27 @@ final class NotificationService: NSObject {
         // If not connected to SSE, try to connect first
         if !isConnected {
             logger.warning("⚠️ Not connected to SSE endpoint, attempting to connect...")
-            await MainActor.run {
-                connect()
-            }
+            connect()
             // Give it a moment to connect
             try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
         }
 
         // Log server info
-        logger
-            .info(
-                "Server info - Port: \(self.serverManager.port), Running: \(self.serverManager.isRunning), SSE Connected: \(self.isConnected)"
-            )
-
-        guard let url = serverManager.buildURL(endpoint: "/api/test-notification") else {
+        logger.info("Server info - Port: \(self.serverProvider?.port ?? "unknown"), Running: \(self.serverProvider?.isRunning ?? false), SSE Connected: \(self.isConnected)")
+        
+        guard let url = serverProvider?.buildURL(endpoint: "/api/test-notification") else {
             logger.error("❌ Failed to build test notification URL")
             return
         }
-
-        logger.info("📤 Sending POST request to: \(url)")
-
+        
+        // Show full URL for debugging test notification endpoint
+        logger.info("📤 Sending POST request to: \(url, privacy: .public)")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         // Add auth token if available
-        if let authToken = serverManager.localAuthToken {
+        if let authToken = serverProvider?.localAuthToken {
             request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
             logger.debug("Added auth token to request")
         }
@@ -850,17 +941,19 @@ final class NotificationService: NSObject {
             let (data, response) = try await URLSession.shared.data(for: request)
 
             if let httpResponse = response as? HTTPURLResponse {
-                logger.info("📥 Received response - Status: \(httpResponse.statusCode)")
-
+                // Show HTTP status code for debugging
+                logger.info("📥 Received response - Status: \(httpResponse.statusCode, privacy: .public)")
                 if httpResponse.statusCode == 200 {
                     logger.info("✅ Server test notification sent successfully")
                     if let responseData = String(data: data, encoding: .utf8) {
-                        logger.debug("Response data: \(responseData)")
+                        // Show full response for debugging
+                        logger.debug("Response data: \(responseData, privacy: .public)")
                     }
                 } else {
                     logger.error("❌ Server test notification failed with status: \(httpResponse.statusCode)")
                     if let errorData = String(data: data, encoding: .utf8) {
-                        logger.error("Error response: \(errorData)")
+                        // Show full error response for debugging
+                        logger.error("Error response: \(errorData, privacy: .public)")
                     }
                 }
             }
@@ -874,5 +967,29 @@ final class NotificationService: NSObject {
         // Note: We can't call disconnect() here because it's @MainActor isolated
         // The cleanup will happen when the EventSource is deallocated
         // NotificationCenter observers are automatically removed on deinit in modern Swift
+    }
+    
+    // MARK: - UNUserNotificationCenterDelegate
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        // Debug: Show full notification details
+        logger.info("🔔 willPresent notification - identifier: \(notification.request.identifier, privacy: .public), title: \(notification.request.content.title, privacy: .public), body: \(notification.request.content.body, privacy: .public)")
+        // Show notifications even when app is in foreground
+        completionHandler([.banner, .sound, .list])
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        // Debug: Show interaction details
+        logger.info("🔔 didReceive response - identifier: \(response.notification.request.identifier, privacy: .public), actionIdentifier: \(response.actionIdentifier, privacy: .public)")
+        // Handle notification actions here if needed in the future
+        completionHandler()
     }
 }

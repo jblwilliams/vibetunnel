@@ -101,6 +101,8 @@ export class Settings extends LitElement {
         this.requestUpdate();
         // Discover repositories when settings are opened
         this.discoverRepositories();
+        // Refresh notification state when dialog opens
+        this.refreshNotificationState();
       } else {
         document.removeEventListener('keydown', this.handleKeyDown);
       }
@@ -129,16 +131,44 @@ export class Settings extends LitElement {
     this.subscription = pushNotificationService.getSubscription();
     this.notificationPreferences = await pushNotificationService.loadPreferences();
 
+    // Get detailed subscription status for debugging
+    const status = pushNotificationService.getSubscriptionStatus();
+    logger.debug('Notification initialization status:', status);
+
+    // If notifications are enabled but no subscription, try to force refresh
+    if (this.notificationPreferences.enabled && !this.subscription && status.hasPermission) {
+      logger.log('Notifications enabled but no subscription found, attempting to refresh...');
+      await pushNotificationService.forceRefreshSubscription();
+
+      // Update state after refresh
+      this.subscription = pushNotificationService.getSubscription();
+    }
+
     // Listen for changes
     this.permissionChangeUnsubscribe = pushNotificationService.onPermissionChange((permission) => {
       this.permission = permission;
+      this.requestUpdate();
     });
 
     this.subscriptionChangeUnsubscribe = pushNotificationService.onSubscriptionChange(
       (subscription) => {
         this.subscription = subscription;
+        this.requestUpdate();
       }
     );
+  }
+
+  private async refreshNotificationState(): Promise<void> {
+    // Refresh current state from the push notification service
+    this.permission = pushNotificationService.getPermission();
+    this.subscription = pushNotificationService.getSubscription();
+    this.notificationPreferences = await pushNotificationService.loadPreferences();
+
+    logger.debug('Refreshed notification state:', {
+      permission: this.permission,
+      hasSubscription: !!this.subscription,
+      preferencesEnabled: this.notificationPreferences.enabled,
+    });
   }
 
   updated(changedProperties: PropertyValues) {
@@ -247,10 +277,24 @@ export class Settings extends LitElement {
         // Enable notifications
         const permission = await pushNotificationService.requestPermission();
         if (permission === 'granted') {
+          // Check if this is the first time enabling notifications
+          const currentPrefs = await pushNotificationService.loadPreferences();
+          if (!currentPrefs.enabled) {
+            // First time enabling - use recommended defaults
+            this.notificationPreferences = pushNotificationService.getRecommendedPreferences();
+            logger.log('Using recommended notification preferences for first-time enable');
+          } else {
+            // Already enabled before - just toggle the enabled state
+            this.notificationPreferences = { ...this.notificationPreferences, enabled: true };
+          }
+
           const subscription = await pushNotificationService.subscribe();
           if (subscription) {
-            this.notificationPreferences = { ...this.notificationPreferences, enabled: true };
             await pushNotificationService.savePreferences(this.notificationPreferences);
+
+            // Show welcome notification
+            await this.showWelcomeNotification();
+
             this.dispatchEvent(new CustomEvent('notifications-enabled'));
           } else {
             this.dispatchEvent(
@@ -263,15 +307,34 @@ export class Settings extends LitElement {
           this.dispatchEvent(
             new CustomEvent('error', {
               detail:
-                permission === 'denied'
-                  ? 'Notifications permission denied'
-                  : 'Notifications permission not granted',
+                'Notification permission denied. Please enable notifications in your browser settings.',
             })
           );
         }
       }
+    } catch (error) {
+      logger.error('Failed to toggle notifications:', error);
+      this.dispatchEvent(
+        new CustomEvent('error', {
+          detail: 'Failed to toggle notifications',
+        })
+      );
     } finally {
       this.isLoading = false;
+    }
+  }
+
+  private async handleForceRefresh() {
+    try {
+      await pushNotificationService.forceRefreshSubscription();
+
+      // Update state after refresh
+      this.subscription = pushNotificationService.getSubscription();
+      this.notificationPreferences = await pushNotificationService.loadPreferences();
+
+      logger.log('Force refresh completed');
+    } catch (error) {
+      logger.error('Force refresh failed:', error);
     }
   }
 
@@ -280,10 +343,70 @@ export class Settings extends LitElement {
 
     this.testingNotification = true;
     try {
-      await pushNotificationService.testNotification();
+      logger.log('🧪 Starting test notification...');
+
+      // Step 1: Check service worker
+      logger.debug('Step 1: Checking service worker registration');
+      if (!pushNotificationService.isSupported()) {
+        throw new Error('Push notifications not supported in this browser');
+      }
+
+      // Step 2: Check permissions
+      logger.debug('Step 2: Checking notification permissions');
+      const permission = pushNotificationService.getPermission();
+      if (permission !== 'granted') {
+        throw new Error(`Notification permission is ${permission}, not granted`);
+      }
+
+      // Step 3: Check subscription
+      logger.debug('Step 3: Checking push subscription');
+      const subscription = pushNotificationService.getSubscription();
+      if (!subscription) {
+        throw new Error('No active push subscription found');
+      }
+
+      // Step 4: Check server status
+      logger.debug('Step 4: Checking server push notification status');
+      const serverStatus = await pushNotificationService.getServerStatus();
+      if (!serverStatus.enabled) {
+        throw new Error('Push notifications disabled on server');
+      }
+
+      if (!serverStatus.configured) {
+        throw new Error('VAPID keys not configured on server');
+      }
+
+      // Step 5: Send test notification
+      logger.debug('Step 5: Sending test notification');
+      await pushNotificationService.sendTestNotification('Test notification from VibeTunnel');
+
+      logger.log('✅ Test notification sent successfully');
       this.dispatchEvent(
         new CustomEvent('success', {
-          detail: 'Test notification sent',
+          detail: 'Test notification sent successfully',
+        })
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error('❌ Test notification failed:', errorMessage);
+
+      // Provide specific guidance based on error
+      let guidance = '';
+      if (errorMessage.includes('permission')) {
+        guidance = 'Please grant notification permissions in your browser settings';
+      } else if (errorMessage.includes('subscription')) {
+        guidance = 'Please enable notifications in settings first';
+      } else if (errorMessage.includes('server')) {
+        guidance = 'Server push notification service is not available';
+      } else if (errorMessage.includes('VAPID')) {
+        guidance = 'VAPID keys are not properly configured';
+      } else {
+        guidance = 'Check browser console for more details';
+      }
+
+      this.dispatchEvent(
+        new CustomEvent('error', {
+          detail: `Test notification failed: ${errorMessage}. ${guidance}`,
         })
       );
     } finally {
@@ -297,6 +420,29 @@ export class Settings extends LitElement {
   ) {
     this.notificationPreferences = { ...this.notificationPreferences, [key]: value };
     await pushNotificationService.savePreferences(this.notificationPreferences);
+  }
+
+  private async showWelcomeNotification(): Promise<void> {
+    // Check if we have a service worker registration
+    const registration = await navigator.serviceWorker.ready;
+    if (!registration) {
+      return;
+    }
+
+    try {
+      // Show notification directly
+      await registration.showNotification('VibeTunnel Notifications Enabled', {
+        body: "You'll now receive notifications for session events",
+        icon: '/apple-touch-icon.png',
+        badge: '/favicon-32.png',
+        tag: 'vibetunnel-settings-welcome',
+        requireInteraction: false,
+        silent: false,
+      });
+      logger.log('Settings welcome notification displayed');
+    } catch (error) {
+      logger.error('Failed to show settings welcome notification:', error);
+    }
   }
 
   private handleAppPreferenceChange(key: keyof AppPreferences, value: boolean | string) {
@@ -442,7 +588,22 @@ export class Settings extends LitElement {
                         Tap the share button in Safari and select "Add to Home Screen" to enable push notifications.
                       </p>
                     `
-                    : html`
+                    : !window.isSecureContext
+                      ? html`
+                      <p class="text-sm text-status-warning mb-2">
+                        ⚠️ Push notifications require a secure connection
+                      </p>
+                      <p class="text-xs text-status-warning opacity-80 mb-2">
+                        You're accessing VibeTunnel via ${window.location.protocol}//${window.location.hostname}
+                      </p>
+                      <p class="text-xs text-status-info opacity-90">
+                        To enable notifications, access VibeTunnel using:
+                        <br>• https://${window.location.hostname}${window.location.port ? `:${window.location.port}` : ''}
+                        <br>• http://localhost:${window.location.port || '4020'}
+                        <br>• http://127.0.0.1:${window.location.port || '4020'}
+                      </p>
+                    `
+                      : html`
                       <p class="text-sm text-status-warning">
                         Push notifications are not supported in this browser.
                       </p>
@@ -509,12 +670,33 @@ export class Settings extends LitElement {
                       <button
                         class="btn-secondary text-xs px-3 py-1.5"
                         @click=${this.handleTestNotification}
-                        ?disabled=${!canTest || this.testingNotification}
-                        title=${!canTest ? 'Enable notifications first' : 'Send test notification'}
+                        ?disabled=${this.testingNotification || !canTest}
                       >
-                        ${this.testingNotification ? 'Sending...' : 'Test Notification'}
+                        ${this.testingNotification ? 'Testing...' : 'Test Notification'}
                       </button>
                     </div>
+
+                    <!-- Debug section (only in development) -->
+                    ${
+                      process.env.NODE_ENV === 'development'
+                        ? html`
+                      <div class="mt-3 pt-3 border-t border-border/50">
+                        <p class="text-xs text-muted mb-2">Debug Information</p>
+                        <div class="text-xs space-y-1">
+                          <div>Permission: ${this.permission}</div>
+                          <div>Subscription: ${this.subscription ? 'Active' : 'None'}</div>
+                          <div>Preferences: ${this.notificationPreferences.enabled ? 'Enabled' : 'Disabled'}</div>
+                          <button
+                            class="btn-secondary text-xs px-2 py-1 mt-2"
+                            @click=${() => this.handleForceRefresh()}
+                          >
+                            Force Refresh
+                          </button>
+                        </div>
+                      </div>
+                    `
+                        : ''
+                    }
                   `
                   : ''
               }

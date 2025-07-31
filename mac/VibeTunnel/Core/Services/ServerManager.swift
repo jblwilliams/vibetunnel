@@ -176,6 +176,8 @@ class ServerManager {
                 // Ensure our state is synced
                 isRunning = true
                 lastError = nil
+                // Start notification service if server is already running
+                await NotificationService.shared.start()
                 return
             case .starting:
                 logger.info("Server is already starting")

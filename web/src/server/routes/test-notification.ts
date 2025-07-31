@@ -1,19 +1,26 @@
 import { type Request, type Response, Router } from 'express';
 import { ServerEventType } from '../../shared/types.js';
+import type { PushNotificationService } from '../services/push-notification-service.js';
 import type { SessionMonitor } from '../services/session-monitor.js';
 import { createLogger } from '../utils/logger.js';
 import { getVersionInfo } from '../version.js';
 
 const logger = createLogger('test-notification');
 
+interface TestNotificationOptions {
+  sessionMonitor?: SessionMonitor;
+  pushNotificationService?: PushNotificationService | null;
+}
+
 /**
  * Test notification endpoint to verify the full notification flow
- * from server → SSE → Mac app
+ * from server → SSE → Mac app AND push notifications
  */
-export function createTestNotificationRouter(sessionMonitor?: SessionMonitor): Router {
+export function createTestNotificationRouter(options: TestNotificationOptions): Router {
+  const { sessionMonitor, pushNotificationService } = options;
   const router = Router();
 
-  // POST /api/test-notification - Trigger a test notification through the SSE system
+  // POST /api/test-notification - Trigger a test notification through BOTH SSE and push systems
   router.post('/test-notification', async (req: Request, res: Response) => {
     logger.info('📨 Test notification requested from client');
     logger.debug('Request headers:', req.headers);
@@ -46,12 +53,44 @@ export function createTestNotificationRouter(sessionMonitor?: SessionMonitor): R
       // This will be picked up by the SSE endpoint and sent to all connected clients
       sessionMonitor.emit('notification', testEvent);
 
-      logger.info('✅ Test notification event emitted successfully');
+      logger.info('✅ Test notification event emitted successfully through SSE');
+
+      // Also send through push notification service if available
+      let pushResult = null;
+      if (pushNotificationService) {
+        try {
+          logger.info('📤 Sending test notification through push service...');
+          pushResult = await pushNotificationService.sendNotification({
+            type: 'test',
+            title: testEvent.title || '🔔 Test Notification',
+            body: testEvent.body || 'This is a test notification from VibeTunnel',
+            icon: '/apple-touch-icon.png',
+            badge: '/favicon-32.png',
+            tag: 'vibetunnel-test',
+            requireInteraction: false,
+            actions: [
+              {
+                action: 'dismiss',
+                title: 'Dismiss',
+              },
+            ],
+            data: {
+              type: 'test-notification',
+              sessionId: testEvent.sessionId,
+              timestamp: testEvent.timestamp,
+            },
+          });
+          logger.info(`✅ Push notification sent to ${pushResult.sent} subscribers`);
+        } catch (error) {
+          logger.error('❌ Failed to send push notification:', error);
+        }
+      }
 
       res.json({
         success: true,
-        message: 'Test notification sent through SSE',
+        message: 'Test notification sent through SSE and push',
         event: testEvent,
+        pushResult,
       });
     } catch (error) {
       logger.error('❌ Failed to send test notification:', error);

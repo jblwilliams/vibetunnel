@@ -1,7 +1,10 @@
 import type { PushSubscription } from '../../shared/types';
 import { HttpMethod } from '../../shared/types';
 import type { NotificationPreferences } from '../../types/config.js';
-import { DEFAULT_NOTIFICATION_PREFERENCES } from '../../types/config.js';
+import {
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  RECOMMENDED_NOTIFICATION_PREFERENCES,
+} from '../../types/config.js';
 import { createLogger } from '../utils/logger';
 import { authClient } from './auth-client';
 import { notificationEventService } from './notification-event-service';
@@ -65,6 +68,15 @@ export class PushNotificationService {
         return;
       }
 
+      // Check if we're in a secure context (HTTPS or localhost)
+      // Service workers require HTTPS except for localhost/127.0.0.1
+      if (!window.isSecureContext) {
+        logger.warn(
+          'Push notifications require HTTPS or localhost. Current context is not secure.'
+        );
+        return;
+      }
+
       // Fetch VAPID public key from server
       await this.fetchVapidPublicKey();
 
@@ -85,6 +97,11 @@ export class PushNotificationService {
 
       // Get existing subscription if any
       this.pushSubscription = await this.serviceWorkerRegistration.pushManager.getSubscription();
+
+      logger.log('Existing push subscription found:', {
+        hasSubscription: !!this.pushSubscription,
+        endpoint: `${this.pushSubscription?.endpoint?.substring(0, 50)}...`,
+      });
 
       // Listen for service worker messages
       navigator.serviceWorker.addEventListener(
@@ -168,27 +185,76 @@ export class PushNotificationService {
    */
   private async autoResubscribe(): Promise<void> {
     try {
+      // Don't wait for initialization here - we're already in the initialization process!
+
       // Load saved preferences
       const preferences = await this.loadPreferences();
 
+      logger.log('Auto-resubscribe checking preferences:', {
+        enabled: preferences.enabled,
+        hasPermission: this.getPermission() === 'granted',
+        hasServiceWorker: !!this.serviceWorkerRegistration,
+        hasVapidKey: !!this.vapidPublicKey,
+        hasExistingSubscription: !!this.pushSubscription,
+      });
+
       // Check if notifications were previously enabled
       if (preferences.enabled) {
-        // Check if we have permission but no subscription
+        logger.log('Notifications were previously enabled, checking subscription state...');
+
+        // Check if we have permission
         const permission = this.getPermission();
-        if (permission === 'granted' && !this.pushSubscription) {
-          logger.log('Auto-resubscribing to push notifications based on saved preferences');
+        if (permission !== 'granted') {
+          logger.warn('Permission not granted, cannot auto-resubscribe');
+          // Update preferences to reflect the failed state
+          preferences.enabled = false;
+          await this.savePreferences(preferences);
+          return;
+        }
+
+        // Ensure service worker is ready and VAPID key is available
+        if (!this.serviceWorkerRegistration) {
+          logger.warn('Service worker not ready, cannot auto-resubscribe');
+          return;
+        }
+
+        if (!this.vapidPublicKey) {
+          logger.warn('VAPID key not available, cannot auto-resubscribe');
+          return;
+        }
+
+        // Check current subscription state from push manager
+        if (!this.pushSubscription) {
+          logger.log('No active subscription found, attempting to resubscribe...');
 
           // Attempt to resubscribe
           const subscription = await this.subscribe();
           if (subscription) {
             logger.log('Successfully auto-resubscribed to push notifications');
+
+            // Notify listeners that subscription is now active
+            this.notifySubscriptionChange(subscription);
+
+            // Show a welcome notification to confirm notifications are working
+            await this.showWelcomeNotification();
           } else {
             logger.warn('Failed to auto-resubscribe, user will need to manually enable');
             // Update preferences to reflect the failed state
             preferences.enabled = false;
             await this.savePreferences(preferences);
           }
+        } else {
+          logger.log('Active subscription already exists');
+
+          // Convert and notify listeners about the existing subscription
+          const subscription = this.pushSubscriptionToInterface(this.pushSubscription);
+          this.notifySubscriptionChange(subscription);
+
+          // Sync subscription with server to ensure it's registered
+          await this.sendSubscriptionToServer(subscription);
         }
+      } else {
+        logger.log('Notifications not previously enabled, skipping auto-resubscribe');
       }
     } catch (error) {
       logger.error('Error during auto-resubscribe:', error);
@@ -323,6 +389,14 @@ export class PushNotificationService {
       return false;
     }
 
+    // Check if we're on HTTPS or localhost
+    // Service workers require HTTPS except for localhost/127.0.0.1
+    const isSecureContext = window.isSecureContext;
+    if (!isSecureContext) {
+      logger.warn('Push notifications require HTTPS or localhost');
+      return false;
+    }
+
     // iOS Safari PWA specific detection
     // iOS Safari supports push notifications only in standalone PWA mode (iOS 16.4+)
     if (this.isIOSSafari()) {
@@ -386,25 +460,34 @@ export class PushNotificationService {
           }
         }, 5000); // 5 second timeout
 
-        const unsubscribe = notificationEventService.on('test-notification', async (data: any) => {
-          logger.log('📨 Received test notification via SSE:', data);
-          receivedNotification = true;
-          clearTimeout(timeout);
-          unsubscribe();
+        const unsubscribe = notificationEventService.on(
+          'test-notification',
+          async (data: unknown) => {
+            logger.log('📨 Received test notification via SSE:', data);
+            receivedNotification = true;
+            clearTimeout(timeout);
+            unsubscribe();
 
-          // Show notification if we have permission
-          if (this.serviceWorkerRegistration && this.getPermission() === 'granted') {
-            await this.serviceWorkerRegistration.showNotification(data.title || 'VibeTunnel Test', {
-              body: data.body || 'Test notification received via SSE!',
-              icon: '/apple-touch-icon.png',
-              badge: '/favicon-32.png',
-              tag: 'vibetunnel-test-sse',
-              requireInteraction: false,
-            });
-            logger.log('✅ Displayed SSE test notification');
+            // Type guard for notification data
+            const notificationData = data as { title?: string; body?: string };
+
+            // Show notification if we have permission
+            if (this.serviceWorkerRegistration && this.getPermission() === 'granted') {
+              await this.serviceWorkerRegistration.showNotification(
+                notificationData.title || 'VibeTunnel Test',
+                {
+                  body: notificationData.body || 'Test notification received via SSE!',
+                  icon: '/apple-touch-icon.png',
+                  badge: '/favicon-32.png',
+                  tag: 'vibetunnel-test-sse',
+                  requireInteraction: false,
+                }
+              );
+              logger.log('✅ Displayed SSE test notification');
+            }
+            resolve();
           }
-          resolve();
-        });
+        );
       });
 
       // Send the test notification request to server
@@ -496,6 +579,13 @@ export class PushNotificationService {
   }
 
   /**
+   * Get recommended notification preferences for new users
+   */
+  getRecommendedPreferences(): NotificationPreferences {
+    return RECOMMENDED_NOTIFICATION_PREFERENCES;
+  }
+
+  /**
    * Register callback for permission changes
    */
   onPermissionChange(callback: NotificationPermissionChangeCallback): () => void {
@@ -534,15 +624,20 @@ export class PushNotificationService {
         method: HttpMethod.POST,
         headers: {
           'Content-Type': 'application/json',
+          ...authClient.getAuthHeader(),
         },
         body: JSON.stringify(subscription),
       });
 
       if (!response.ok) {
-        throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(
+          `Server responded with ${response.status}: ${errorText || response.statusText}`
+        );
       }
 
-      logger.log('subscription sent to server');
+      const result = await response.json();
+      logger.log('subscription sent to server successfully', result);
     } catch (error) {
       logger.error('failed to send subscription to server:', error);
       throw error;
@@ -660,23 +755,52 @@ export class PushNotificationService {
    */
   async sendTestNotification(message?: string): Promise<void> {
     try {
+      logger.log('Sending test notification...');
+
+      // Validate prerequisites
+      if (!this.serviceWorkerRegistration) {
+        throw new Error('Service worker not registered');
+      }
+
+      if (!this.vapidPublicKey) {
+        throw new Error('VAPID public key not available');
+      }
+
+      if (!this.pushSubscription) {
+        throw new Error('No active push subscription');
+      }
+
+      // Check server status first
+      const serverStatus = await this.getServerStatus();
+      if (!serverStatus.enabled) {
+        throw new Error('Push notifications disabled on server');
+      }
+
+      if (!serverStatus.configured) {
+        throw new Error('VAPID keys not configured on server');
+      }
+
+      // Send test notification to server
       const response = await fetch('/api/push/test', {
-        method: HttpMethod.POST,
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({
+          message: message || 'Test notification from VibeTunnel',
+        }),
       });
 
       if (!response.ok) {
-        throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`Server responded with ${response.status}: ${errorText}`);
       }
 
       const result = await response.json();
-      logger.log('Test notification sent via server:', result);
+      logger.log('Test notification sent successfully:', result);
     } catch (error) {
-      logger.error('Failed to send test notification via server:', error);
-      throw error;
+      logger.error('Failed to send test notification:', error);
+      throw error; // Re-throw for the calling code to handle
     }
   }
 
@@ -704,6 +828,74 @@ export class PushNotificationService {
       // Error is already logged in fetchVapidPublicKey
       // Don't re-throw to match test expectations
     }
+  }
+
+  /**
+   * Show a welcome notification when auto-resubscribed
+   */
+  private async showWelcomeNotification(): Promise<void> {
+    if (!this.serviceWorkerRegistration) {
+      return;
+    }
+
+    try {
+      // Show notification directly
+      await this.serviceWorkerRegistration.showNotification('VibeTunnel Notifications Active', {
+        body: "You'll receive notifications for session events",
+        icon: '/apple-touch-icon.png',
+        badge: '/favicon-32.png',
+        tag: 'vibetunnel-welcome',
+        requireInteraction: false,
+        silent: false,
+      });
+      logger.log('Welcome notification displayed');
+    } catch (error) {
+      logger.error('Failed to show welcome notification:', error);
+    }
+  }
+
+  /**
+   * Force refresh subscription state - useful for debugging and manual recovery
+   */
+  async forceRefreshSubscription(): Promise<void> {
+    try {
+      logger.log('Force refreshing subscription state');
+
+      // Clear current subscription state
+      this.pushSubscription = null;
+
+      // Wait for initialization to complete
+      await this.waitForInitialization();
+
+      // Check if we should auto-resubscribe
+      const preferences = await this.loadPreferences();
+      if (preferences.enabled) {
+        await this.autoResubscribe();
+      }
+
+      logger.log('Subscription state refresh completed');
+    } catch (error) {
+      logger.error('Error during subscription refresh:', error);
+    }
+  }
+
+  /**
+   * Get current subscription status for debugging
+   */
+  getSubscriptionStatus(): {
+    hasPermission: boolean;
+    hasServiceWorker: boolean;
+    hasVapidKey: boolean;
+    hasSubscription: boolean;
+    preferences: NotificationPreferences | null;
+  } {
+    return {
+      hasPermission: this.getPermission() === 'granted',
+      hasServiceWorker: !!this.serviceWorkerRegistration,
+      hasVapidKey: !!this.vapidPublicKey,
+      hasSubscription: !!this.pushSubscription,
+      preferences: null, // Will be loaded asynchronously
+    };
   }
 
   /**

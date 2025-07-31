@@ -11,6 +11,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { WebSocketServer } from 'ws';
+import { ServerEventType } from '../shared/types.js';
 import { apiSocketServer } from './api-socket-server.js';
 import type { AuthenticatedRequest } from './middleware/auth.js';
 import { createAuthMiddleware } from './middleware/auth.js';
@@ -527,6 +528,112 @@ export async function createApp(): Promise<AppInstance> {
     logger.debug('Push notifications disabled');
   }
 
+  // Connect SessionMonitor to push notification service
+  if (sessionMonitor && pushNotificationService) {
+    logger.info('Connecting SessionMonitor to push notification service');
+
+    // Listen for session monitor notifications and send push notifications
+    sessionMonitor.on('notification', async (event) => {
+      try {
+        // Map event types to push notification data
+        let pushPayload = null;
+
+        switch (event.type) {
+          case ServerEventType.SessionStart:
+            pushPayload = {
+              type: 'session-start',
+              title: '🚀 Session Started',
+              body: event.sessionName || 'Terminal Session',
+            };
+            break;
+
+          case ServerEventType.SessionExit:
+            pushPayload = {
+              type: 'session-exit',
+              title: '🏁 Session Ended',
+              body: event.sessionName || 'Terminal Session',
+              data: { exitCode: event.exitCode },
+            };
+            break;
+
+          case ServerEventType.CommandFinished:
+            pushPayload = {
+              type: 'command-finished',
+              title: '✅ Your Turn',
+              body: event.command || 'Command completed',
+              data: { duration: event.duration },
+            };
+            break;
+
+          case ServerEventType.CommandError:
+            pushPayload = {
+              type: 'command-error',
+              title: '❌ Command Failed',
+              body: event.command || 'Command failed',
+              data: { exitCode: event.exitCode },
+            };
+            break;
+
+          case ServerEventType.Bell:
+            pushPayload = {
+              type: 'bell',
+              title: '🔔 Terminal Bell',
+              body: event.sessionName || 'Terminal',
+            };
+            break;
+
+          case ServerEventType.ClaudeTurn:
+            pushPayload = {
+              type: 'claude-turn',
+              title: '💬 Your Turn',
+              body: event.message || 'Claude has finished responding',
+            };
+            break;
+
+          case ServerEventType.TestNotification:
+            // Test notifications are already handled by the test endpoint
+            return;
+
+          default:
+            return; // Skip unknown event types
+        }
+
+        if (pushPayload) {
+          // Send push notification
+          const result = await pushNotificationService.sendNotification({
+            ...pushPayload,
+            icon: '/apple-touch-icon.png',
+            badge: '/favicon-32.png',
+            tag: `vibetunnel-${pushPayload.type}`,
+            requireInteraction: pushPayload.type === 'command-error',
+            actions: [
+              {
+                action: 'view-session',
+                title: 'View Session',
+              },
+              {
+                action: 'dismiss',
+                title: 'Dismiss',
+              },
+            ],
+            data: {
+              ...pushPayload.data,
+              type: pushPayload.type,
+              sessionId: event.sessionId,
+              timestamp: event.timestamp,
+            },
+          });
+
+          logger.debug(
+            `Push notification sent for ${event.type}: ${result.sent} successful, ${result.failed} failed`
+          );
+        }
+      } catch (error) {
+        logger.error('Failed to send push notification for SessionMonitor event:', error);
+      }
+    });
+  }
+
   // Initialize HQ components
   let remoteRegistry: RemoteRegistry | null = null;
   let hqClient: HQClient | null = null;
@@ -929,24 +1036,24 @@ export async function createApp(): Promise<AppInstance> {
   app.use('/api/multiplexer', createMultiplexerRoutes({ ptyManager }));
   logger.debug('Mounted multiplexer routes');
 
-  // Mount push notification routes
-  if (vapidManager) {
-    app.use(
-      '/api',
-      createPushRoutes({
-        vapidManager,
-        pushNotificationService,
-      })
-    );
-    logger.debug('Mounted push notification routes');
-  }
+  // Mount push notification routes - always mount even if VAPID is not initialized
+  // This ensures proper error responses instead of 404s
+  app.use(
+    '/api',
+    createPushRoutes({
+      vapidManager: vapidManager || new VapidManager(), // Pass a dummy instance if null
+      pushNotificationService,
+      sessionMonitor,
+    })
+  );
+  logger.debug('Mounted push notification routes');
 
   // Mount events router for SSE streaming
   app.use('/api', createEventsRouter(sessionMonitor));
   logger.debug('Mounted events routes');
 
   // Mount test notification router
-  app.use('/api', createTestNotificationRouter(sessionMonitor));
+  app.use('/api', createTestNotificationRouter({ sessionMonitor, pushNotificationService }));
   logger.debug('Mounted test notification routes');
 
   // Initialize control socket

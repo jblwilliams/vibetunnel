@@ -929,11 +929,18 @@ final class BunServer {
     }
 
     private func monitorProcessTermination() async {
-        guard let process else { return }
+        // Capture process reference to avoid race conditions
+        guard let process = self.process else { return }
 
         // Wait for process exit
         await process.waitUntilExitAsync()
 
+        // Check if process is still valid before accessing terminationStatus
+        guard self.process != nil else {
+            logger.warning("Process was deallocated during termination monitoring")
+            return
+        }
+        
         let exitCode = process.terminationStatus
 
         // Check current state

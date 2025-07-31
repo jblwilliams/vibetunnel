@@ -182,12 +182,12 @@ struct NotificationSettingsView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             HStack {
                                 Button("Test Notification") {
-                                    Task {
+                                    Task { @MainActor in
                                         isTestingNotification = true
                                         // Use server test notification to verify the full flow
                                         await notificationService.sendServerTestNotification()
                                         // Reset button state after a delay
-                                        try? await Task.sleep(nanoseconds: 1_000_000_000)
+                                        await Task.yield()
                                         isTestingNotification = false
                                     }
                                 }

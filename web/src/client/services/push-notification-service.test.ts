@@ -114,7 +114,10 @@ const createMockWindow = () => ({
   addEventListener: vi.fn(),
   location: {
     origin: 'http://localhost:3000',
+    hostname: 'localhost',
+    protocol: 'http:',
   },
+  isSecureContext: true, // Mock secure context for tests (localhost is considered secure)
 });
 
 let mockWindow = createMockWindow();
@@ -134,6 +137,26 @@ global.fetch = vi.fn();
 describe('PushNotificationService', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+
+    // Set up default fetch mock for VAPID key
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('/api/push/vapid-public-key')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              publicKey:
+                'BLhSYXCVq1lX0hQ7T_Qt8-_s9k2jJqnGPtCT3kY_SrUhqG4_7FscqLvX0XkH8DqR6fF0vAl_6nQPYe3xt9zBHUE',
+              enabled: true,
+            }),
+        });
+      }
+      // Default response for other endpoints
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({}),
+      });
+    });
 
     // Ensure any pending promises are resolved
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -204,6 +227,19 @@ describe('PushNotificationService', () => {
     testService.preferences = null;
     testService.initializationPromise = null;
     testService.vapidPublicKey = 'test-vapid-key';
+
+    // Set up default mock for serverConfigService
+    (serverConfigService.getNotificationPreferences as vi.Mock).mockResolvedValue({
+      enabled: false,
+      sessionExit: true,
+      sessionStart: true,
+      commandError: true,
+      commandCompletion: false,
+      bell: true,
+      claudeTurn: false,
+      soundEnabled: true,
+      vibrationEnabled: false,
+    });
   });
 
   afterEach(async () => {
@@ -534,7 +570,7 @@ describe('PushNotificationService', () => {
       await pushNotificationService.initialize();
 
       // Capture the event handler
-      let testNotificationHandler: (data: any) => void;
+      let testNotificationHandler: ((data: unknown) => void) | undefined;
       (notificationEventService.on as vi.Mock).mockImplementation((event, handler) => {
         if (event === 'test-notification') {
           testNotificationHandler = handler;
@@ -547,7 +583,7 @@ describe('PushNotificationService', () => {
       // Simulate receiving the event
       await new Promise((resolve) => setTimeout(resolve, 100)); // allow time for listener to be registered
 
-      expect(testNotificationHandler!).toBeDefined();
+      expect(testNotificationHandler).toBeDefined();
       testNotificationHandler?.({
         title: 'VibeTunnel Test',
         body: 'Push notifications are working correctly!',
@@ -575,7 +611,7 @@ describe('PushNotificationService', () => {
       await pushNotificationService.initialize();
 
       // Capture the event handler
-      let testNotificationHandler: (data: any) => void;
+      let testNotificationHandler: ((data: unknown) => void) | undefined;
       (notificationEventService.on as vi.Mock).mockImplementation((event, handler) => {
         if (event === 'test-notification') {
           testNotificationHandler = handler;
@@ -588,7 +624,7 @@ describe('PushNotificationService', () => {
       // Simulate receiving the event
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      expect(testNotificationHandler!).toBeDefined();
+      expect(testNotificationHandler).toBeDefined();
       testNotificationHandler?.({});
 
       await testPromise;
@@ -604,10 +640,39 @@ describe('PushNotificationService', () => {
   });
 
   describe('sendTestNotification', () => {
+    beforeEach(async () => {
+      // Initialize the service with mocked subscription
+      const mockSubscription = {
+        endpoint: 'https://fcm.googleapis.com/test',
+        getKey: vi.fn((name: string) => {
+          if (name === 'p256dh') return new Uint8Array([1, 2, 3]);
+          if (name === 'auth') return new Uint8Array([4, 5, 6]);
+          return null;
+        }),
+      };
+      mockServiceWorkerRegistration.pushManager.getSubscription.mockResolvedValue(mockSubscription);
+
+      await pushNotificationService.initialize();
+    });
+
     it('should send a test notification via server', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ success: true }),
+      global.fetch = vi.fn().mockImplementation((url) => {
+        if (url === '/api/push/status') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ enabled: true, configured: true, subscriptions: 1 }),
+          });
+        }
+        if (url === '/api/push/test') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true }),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({}),
+        });
       });
 
       await pushNotificationService.sendTestNotification('Test message');
@@ -622,10 +687,24 @@ describe('PushNotificationService', () => {
     });
 
     it('should handle test notification failure', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
+      global.fetch = vi.fn().mockImplementation((url) => {
+        if (url === '/api/push/status') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ enabled: true, configured: true, subscriptions: 1 }),
+          });
+        }
+        if (url === '/api/push/test') {
+          return Promise.resolve({
+            ok: false,
+            status: 500,
+            text: () => Promise.resolve('Internal Server Error'),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({}),
+        });
       });
 
       await expect(pushNotificationService.sendTestNotification()).rejects.toThrow(
