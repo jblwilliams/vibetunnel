@@ -1,7 +1,6 @@
 import Foundation
 import Observation
 import OSLog
-@preconcurrency import ScreenCaptureKit
 import SwiftUI
 
 /// Errors that can occur during server operations
