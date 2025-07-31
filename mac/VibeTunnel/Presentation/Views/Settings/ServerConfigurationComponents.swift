@@ -87,6 +87,11 @@ struct AccessModeView: View {
 
     @AppStorage(AppConstants.UserDefaultsKeys.tailscaleServeEnabled)
     private var tailscaleServeEnabled = false
+    
+    @Environment(TailscaleService.self)
+    private var tailscaleService
+    @Environment(TailscaleServeStatusService.self)
+    private var tailscaleServeStatus
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -95,14 +100,14 @@ struct AccessModeView: View {
                     .font(.callout)
                 Spacer()
 
-                if tailscaleServeEnabled {
-                    // When Tailscale Serve is enabled, force localhost mode
+                if shouldLockToLocalhost {
+                    // Only lock when Tailscale Serve is actually working
                     Text("Localhost")
                         .foregroundColor(.secondary)
 
                     Image(systemName: "lock.shield.fill")
                         .foregroundColor(.blue)
-                        .help("Tailscale Serve requires localhost binding for security")
+                        .help("Tailscale Serve active - locked to localhost for security")
                 } else {
                     Picker("", selection: $accessModeString) {
                         ForEach(DashboardAccessMode.allCases, id: \.rawValue) { mode in
@@ -117,7 +122,20 @@ struct AccessModeView: View {
                 }
             }
 
-            if tailscaleServeEnabled && accessMode == .network {
+            // Show warning when Tailscale Serve is enabled but not working
+            if tailscaleServeEnabled && !shouldLockToLocalhost {
+                HStack(spacing: 4) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.orange)
+                        .font(.caption)
+                    Text("Tailscale Serve enabled but not active - using selected access mode")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            // Show info when Tailscale Serve is active and locked
+            if shouldLockToLocalhost && accessMode == .network {
                 HStack(spacing: 4) {
                     Image(systemName: "info.circle.fill")
                         .foregroundColor(.blue)
@@ -128,6 +146,13 @@ struct AccessModeView: View {
                 }
             }
         }
+    }
+    
+    /// Only lock to localhost when Tailscale Serve is enabled AND actually working
+    private var shouldLockToLocalhost: Bool {
+        tailscaleServeEnabled && 
+        tailscaleService.isRunning && 
+        tailscaleServeStatus.isRunning
     }
 }
 

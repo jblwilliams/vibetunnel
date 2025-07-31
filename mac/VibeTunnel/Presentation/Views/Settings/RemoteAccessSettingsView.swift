@@ -311,101 +311,154 @@ private struct TailscaleIntegrationSection: View {
                         .buttonStyle(.link)
                         .controlSize(.small)
                     }
-                } else if tailscaleService.isRunning {
-                    // Tailscale Serve toggle
-                    HStack {
-                        Toggle("Enable Tailscale Serve Integration", isOn: $tailscaleServeEnabled)
-                            .onChange(of: tailscaleServeEnabled) { _, newValue in
-                                logger.info("Tailscale Serve integration \(newValue ? "enabled" : "disabled")")
-                                // Restart server to apply the new setting
-                                Task {
-                                    await serverManager.restart()
+                } else if !tailscaleService.isRunning {
+                    // Show Tailscale preferences even when not running
+                    VStack(alignment: .leading, spacing: 12) {
+                        // Tailscale Serve toggle - always available when installed
+                        HStack {
+                            Toggle("Enable Tailscale Serve Integration", isOn: $tailscaleServeEnabled)
+                                .onChange(of: tailscaleServeEnabled) { _, newValue in
+                                    logger.info("Tailscale Serve integration \(newValue ? "enabled" : "disabled")")
+                                    // Restart server to apply the new setting
+                                    Task {
+                                        await serverManager.restart()
+                                    }
                                 }
-                            }
 
-                        Spacer()
+                            Spacer()
 
-                        if tailscaleServeEnabled {
-                            // Show status indicator - fixed height to prevent jumping
-                            HStack(spacing: 4) {
-                                if tailscaleServeStatus.isLoading {
-                                    ProgressView()
-                                        .scaleEffect(0.7)
-                                } else if tailscaleServeStatus.isRunning {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(.green)
-                                    Text("Running")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                } else if let error = tailscaleServeStatus.lastError {
+                            // Show status when enabled but not running
+                            if tailscaleServeEnabled {
+                                HStack(spacing: 4) {
                                     Image(systemName: "exclamationmark.triangle.fill")
                                         .foregroundColor(.orange)
-                                        .help("Error: \(error)")
-                                    Text("Error")
+                                    Text("Tailscale not running")
                                         .font(.caption)
                                         .foregroundColor(.orange)
-                                } else {
-                                    Image(systemName: "circle")
-                                        .foregroundColor(.gray)
-                                    Text("Starting...")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
                                 }
+                                .frame(height: 16)
                             }
-                            .frame(height: 16) // Fixed height prevents UI jumping
+                        }
+
+                        // Show action button to start Tailscale
+                        if tailscaleService.isInstalled && !tailscaleService.isRunning {
+                            Button(action: {
+                                tailscaleService.openTailscaleApp()
+                            }, label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "play.circle")
+                                    Text("Start Tailscale")
+                                }
+                            })
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                        }
+
+                        // Show help text about what will happen when enabled
+                        if tailscaleServeEnabled {
+                            Text("Tailscale Serve will activate automatically when Tailscale is running.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     }
+                } else {
+                    // Tailscale is running - show full interface
+                    VStack(alignment: .leading, spacing: 12) {
+                        // Tailscale Serve toggle
+                        HStack {
+                            Toggle("Enable Tailscale Serve Integration", isOn: $tailscaleServeEnabled)
+                                .onChange(of: tailscaleServeEnabled) { _, newValue in
+                                    logger.info("Tailscale Serve integration \(newValue ? "enabled" : "disabled")")
+                                    // Restart server to apply the new setting
+                                    Task {
+                                        await serverManager.restart()
+                                    }
+                                }
 
-                    // Show dashboard URL when running
-                    if let hostname = tailscaleService.tailscaleHostname {
-                        InlineClickableURLView(
-                            label: "Access VibeTunnel at:",
-                            url: TailscaleURLHelper.constructURL(
-                                hostname: hostname,
-                                port: serverPort,
-                                isTailscaleServeEnabled: tailscaleServeEnabled
-                            )?.absoluteString ?? ""
-                        )
+                            Spacer()
 
-                        // Show warning if in localhost-only mode
-                        if accessMode == .localhost && !tailscaleServeEnabled {
-                            HStack(spacing: 6) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(.orange)
-                                    .font(.system(size: 12))
+                            if tailscaleServeEnabled {
+                                // Show status indicator - fixed height to prevent jumping
+                                HStack(spacing: 4) {
+                                    if tailscaleServeStatus.isLoading {
+                                        ProgressView()
+                                            .scaleEffect(0.7)
+                                    } else if tailscaleServeStatus.isRunning {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.green)
+                                        Text("Running")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    } else if let error = tailscaleServeStatus.lastError {
+                                        Image(systemName: "exclamationmark.triangle.fill")
+                                            .foregroundColor(.orange)
+                                            .help("Error: \(error)")
+                                        Text("Error")
+                                            .font(.caption)
+                                            .foregroundColor(.orange)
+                                    } else {
+                                        Image(systemName: "circle")
+                                            .foregroundColor(.gray)
+                                        Text("Starting...")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                .frame(height: 16) // Fixed height prevents UI jumping
+                            }
+                        }
+
+                        // Show dashboard URL when running
+                        if let hostname = tailscaleService.tailscaleHostname {
+                            InlineClickableURLView(
+                                label: "Access VibeTunnel at:",
+                                url: TailscaleURLHelper.constructURL(
+                                    hostname: hostname,
+                                    port: serverPort,
+                                    isTailscaleServeEnabled: tailscaleServeEnabled
+                                )?.absoluteString ?? ""
+                            )
+
+                            // Show warning if in localhost-only mode
+                            if accessMode == .localhost && !tailscaleServeEnabled {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundColor(.orange)
+                                        .font(.system(size: 12))
+                                    Text(
+                                        "Server is in localhost-only mode. Change to 'Network' mode above to access via Tailscale."
+                                    )
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                }
+                            }
+
+                            // Show error details if any
+                            if tailscaleServeEnabled, let error = tailscaleServeStatus.lastError {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundColor(.orange)
+                                        .font(.system(size: 12))
+                                    Text("Error: \(error)")
+                                        .font(.caption)
+                                        .foregroundColor(.orange)
+                                        .lineLimit(2)
+                                }
+                                .padding(.vertical, 4)
+                                .padding(.horizontal, 8)
+                                .background(Color.orange.opacity(0.1))
+                                .cornerRadius(4)
+                            }
+
+                            // Help text about Tailscale Serve
+                            if tailscaleServeEnabled && tailscaleServeStatus.isRunning {
                                 Text(
-                                    "Server is in localhost-only mode. Change to 'Network' mode above to access via Tailscale."
+                                    "Tailscale Serve provides secure access with automatic authentication using Tailscale identity headers."
                                 )
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundColor(.secondary)
+                                .padding(.top, 4)
                             }
-                        }
-
-                        // Show error details if any
-                        if tailscaleServeEnabled, let error = tailscaleServeStatus.lastError {
-                            HStack(spacing: 6) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(.orange)
-                                    .font(.system(size: 12))
-                                Text("Error: \(error)")
-                                    .font(.caption)
-                                    .foregroundColor(.orange)
-                                    .lineLimit(2)
-                            }
-                            .padding(.vertical, 4)
-                            .padding(.horizontal, 8)
-                            .background(Color.orange.opacity(0.1))
-                            .cornerRadius(4)
-                        }
-
-                        // Help text about Tailscale Serve
-                        if tailscaleServeEnabled && tailscaleServeStatus.isRunning {
-                            Text(
-                                "Tailscale Serve provides secure access with automatic authentication using Tailscale identity headers."
-                            )
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .padding(.top, 4)
                         }
                     }
                 }
