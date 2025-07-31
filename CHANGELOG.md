@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.0-beta.15] - 2025-07-28
+## [1.0.0-beta.15] - 2025-07-31
 
 ### ✨ Major Features
 
@@ -52,14 +52,27 @@
 
 ### 🐛 Bug Fixes
 
-#### **Stability & Performance**
+#### **Project Organization & Stability**
+- Fixed CI pipeline after project rename from Vibetunnel-Mac to Vibetunnel
+- Enhanced VT command reliability with self-healing capabilities - VT sessions now automatically recover from connection issues
+- Restored missing sessionViewElement property in LifecycleEventManager, fixing session lifecycle tracking
+- Updated ConfigService tests to properly handle default notification preferences
 - Fixed menu bar icon not appearing on app launch
 - Resolved memory leaks causing OOM crashes during test runs
 - Fixed Node.js v24.3.0 fs.cpSync crash with workaround
 - Improved CI performance with better caching and parallel jobs
 - Fixed EventSource handling in tests
 
-#### **UI Fixes**
+#### **iOS Experience Improvements**  
+- Fixed keyboard interface issues that were preventing smooth text input on mobile devices
+- Resolved keyboard dismissal problems that could leave the interface in an inconsistent state
+- Enhanced mobile keyboard behavior for better iOS compatibility
+
+#### **Git Integration & UI Polish**
+- Fixed Git worktree UI by hiding the Follow button when viewing the current worktree (prevents confusion) 
+- Resolved checkbox visibility issues after migrating to Tailwind v4
+- Fixed tmux session cleanup to handle detachment gracefully instead of throwing kill errors
+- Improved session path handling - Mac app now uses consistent path-based URLs for sessions
 - Autocomplete dropdown only shows when text field is focused
 - Fixed drag & drop overlay persistence issues
 - Resolved CSS/JS resource loading on nested routes
@@ -69,15 +82,37 @@
 - **Worktree Selection UI Improvements**: Fixed confusing dropdown behavior, consistent text regardless of selection state
 - **Intelligent Cursor Following**: Restored smart cursor tracking that keeps cursor visible during text input
 
+#### **Advanced Features**
+- Added comprehensive CJK (Chinese, Japanese, Korean) input method support with improved Z-index management
+- Enhanced Tailscale integration with automatic authentication for seamless secure access
+- Added full tmux integration for users who prefer tmux-based terminal workflows
+- Cleaned up VT command output by removing verbose binary path prefixes and socket disconnect noise
+
+#### **Developer Experience**
+- Improved notification system reliability - fixed test notification button integration between Mac app and server
+- Enhanced notification auto-reconnection behavior when pages are reloaded
+- Added comprehensive logging documentation to README for better troubleshooting
+- Removed obsolete bundle identifier references and updated logging configuration
+
 ### 🔧 Technical Improvements
 
-#### **Architecture**
+#### **Performance & Architecture**
+- Completed Tailwind CSS v4 migration with performance optimizations
+- Enhanced Playwright test performance for faster CI runs
+- Updated all dependencies to latest stable versions
+- Improved type safety throughout the codebase, especially for Tailscale authentication
 - Modular refactoring: Split `session-view.ts` into 7 specialized managers
 - Component breakdown: Refactored `session-create-form` into smaller components
 - Unified components: Created reusable `GitBranchWorktreeSelector`
 - Better separation: Clear boundaries between UI and business logic
 - **Session rename functionality centralized**: Eliminated duplicate code across components
 - **Socket-based vt command communication**: Replaced HTTP with Unix domain sockets for reliability
+
+#### **Communication & Reliability**
+- Unified notification system now uses Server-Sent Events (SSE) for all clients instead of mixed approaches
+- Fixed git status monitoring to prevent EMFILE errors through shallow directory watching
+- Standardized git status terminology - consistently uses 'New' for untracked files across all interfaces
+- Enhanced session cleanup on startup with proper JSON field handling
 
 #### **Test Infrastructure**
 - Comprehensive test cleanup preventing memory exhaustion
