@@ -162,3 +162,4 @@ buildServer.json
 mac/build-test/
 .env
 .aider*
+/.crush
