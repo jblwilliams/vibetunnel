@@ -1,10 +1,18 @@
 # Changelog
 
-## [1.0.0-beta.15] - 2025-07-31
+## [1.0.0-beta.15] - 2025-08-02
 
 ### ✨ Major Features
 
-#### **Git Worktree Management**
+#### **Enhanced Push Notification System**
+- Complete overhaul of the notification system with reliable push notifications for session events
+- Test notification feature now works seamlessly between web frontend and Mac app
+- Real-time notifications for session exits, errors, and important events
+- Improved notification preferences with granular control over notification types
+- Better error handling and recovery for notification delivery failures
+- Enhanced integration between web services and native Mac notification service
+
+#### **Git Worktree Management** (#452)
 - Full worktree support: Create, manage, and delete Git worktrees directly from VibeTunnel
 - Follow Mode: Terminal sessions automatically navigate to corresponding directories when switching Git branches
 - Visual indicators: Fork icon (⑂) shows worktree sessions, branch names displayed throughout UI
@@ -17,16 +25,12 @@
 - The `vt follow` command now works contextually - run it from either your main repository or a worktree, and it sets up the appropriate tracking
 - Follow mode displays worktree paths with `~` for your home directory, making them easier to read
 
-#### **Robust Command Communication**
-- The `vt` command now uses Unix domain sockets instead of HTTP for more reliable communication
-- No more port discovery issues - commands like `vt status`, `vt follow`, and `vt unfollow` work instantly
-- Socket-based API at `~/.vibetunnel/api.sock` provides consistent command execution
-
-#### **Mac Menu Bar Keyboard Navigation**
-- Navigate sessions with arrow keys (↑/↓) with wraparound support
-- Press Enter to focus terminal windows or open web sessions
-- Visual focus indicators appear automatically when using keyboard
-- Menu closes after selecting a session or opening settings
+#### **Comprehensive CJK (Chinese, Japanese, Korean) Input Support** (#480)
+- Full support for CJK input methods with proper IME (Input Method Editor) integration
+- Fixed input duplication issues that affected Asian language users
+- Improved Z-index management to ensure IME candidates display correctly above terminal content
+- Enhanced keyboard event handling for complex character composition
+- Better compatibility with native macOS and iOS input methods
 
 #### **Quick Session Switching with Number Keys**
 - When keyboard capture is active, use Cmd+1...9 (Mac) or Ctrl+1...9 (Linux) to instantly switch between sessions
@@ -53,19 +57,15 @@
 ### 🐛 Bug Fixes
 
 #### **Project Organization & Stability**
-- Fixed CI pipeline after project rename from Vibetunnel-Mac to Vibetunnel
 - Enhanced VT command reliability with self-healing capabilities - VT sessions now automatically recover from connection issues
 - Restored missing sessionViewElement property in LifecycleEventManager, fixing session lifecycle tracking
 - Updated ConfigService tests to properly handle default notification preferences
 - Fixed menu bar icon not appearing on app launch
 - Resolved memory leaks causing OOM crashes during test runs
-- Fixed Node.js v24.3.0 fs.cpSync crash with workaround
-- Improved CI performance with better caching and parallel jobs
-- Fixed EventSource handling in tests
 
 #### **iOS Experience Improvements**  
-- Fixed keyboard interface issues that were preventing smooth text input on mobile devices
-- Resolved keyboard dismissal problems that could leave the interface in an inconsistent state
+- Fixed keyboard interface issues that were preventing smooth text input on mobile devices (#484)
+- Resolved keyboard dismissal problems that could leave the interface in an inconsistent state (#484)
 - Enhanced mobile keyboard behavior for better iOS compatibility
 
 #### **Git Integration & UI Polish**
@@ -83,13 +83,12 @@
 - **Intelligent Cursor Following**: Restored smart cursor tracking that keeps cursor visible during text input
 
 #### **Advanced Features**
-- Added comprehensive CJK (Chinese, Japanese, Korean) input method support with improved Z-index management
-- Enhanced Tailscale integration with automatic authentication for seamless secure access
-- Added full tmux integration for users who prefer tmux-based terminal workflows
+- Enhanced Tailscale integration with automatic authentication for seamless secure access (#472)
+- Added full tmux integration for users who prefer tmux-based terminal workflows (#460)
 - Cleaned up VT command output by removing verbose binary path prefixes and socket disconnect noise
 
 #### **Developer Experience**
-- Improved notification system reliability - fixed test notification button integration between Mac app and server
+- Improved notification system reliability - fixed test notification button integration between Mac app and server (#483)
 - Enhanced notification auto-reconnection behavior when pages are reloaded
 - Added comprehensive logging documentation to README for better troubleshooting
 - Removed obsolete bundle identifier references and updated logging configuration
@@ -129,7 +128,7 @@
 - Comprehensive JSDoc documentation added to service classes
 - Removed backwards compatibility for older vt command versions
 
-#### **Push Notifications**
+#### **Push Notifications** (#475)
 - Native push notifications for terminal events - get notified when commands complete, sessions start/end, or errors occur
 - Customizable notification types: Session exits, command completion (>3s), command errors, terminal bell, Claude AI turn notifications
 - Web-based onboarding flow for easy setup on macOS and mobile devices
@@ -160,6 +159,34 @@
 - Version tracking in socket protocol for better debugging
 - Consolidated duplicate Git status implementations for maintainability
 - Enhanced error logging for session termination debugging
+
+#### **Self-Healing VT Command** 
+- The `vt` command now automatically recovers from connection issues and socket failures
+- Improved reliability with automatic reconnection when the server restarts
+- Better error handling for Unix socket communication
+
+#### **iOS Mobile Experience**
+- Completely redesigned keyboard handling for iOS devices (#484)
+- Fixed keyboard dismissal issues that left the interface in an inconsistent state (#484)
+- Improved modal interactions with better keyboard management
+- Enhanced direct keyboard input manager for smoother text entry
+- Better handling of iOS-specific keyboard behaviors and quirks
+- Fixed blinking cursor issue in binary terminal mode (#489)
+
+### 📚 Additional Documentation
+
+- Added comprehensive logging documentation with vtlog utility guide
+- Added minimal agent configuration file for amp
+- Improved README with better logging instructions
+
+### 👥 Contributors
+
+First-time contributors to VibeTunnel:
+- [@jblwilliams](https://github.com/jblwilliams) - Removed unused ScreenCaptureKit import from ServerManager (#486)
+
+Additional contributors:
+- [@hjanuschka](https://github.com/hjanuschka) - Fixed iOS keyboard dismissal issue (#484) and blinking cursor in binary terminal mode (#489)
+- [@fal3](https://github.com/fal3) - Fixed Test Notification Button to VibeTunnel Mac App (#483)
 
 ## [1.0.0-beta.14] - 2025-07-21
 
