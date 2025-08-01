@@ -52,7 +52,9 @@ struct AboutView: View {
         "Piotr Bosak",
         "Zhuojie Zhou",
         "Alex Fallah",
-        "Justin Williams"
+        "Justin Williams",
+        "Lachlan Donald",
+        "Diego Petrucci"
     ]
 
     var body: some View {

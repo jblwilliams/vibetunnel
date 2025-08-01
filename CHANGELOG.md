@@ -4,26 +4,25 @@
 
 ### ✨ Major Features
 
-#### **Enhanced Push Notification System**
+#### **Push Notifications** (#475)
+- Native push notifications for terminal events - get notified when commands complete, sessions start/end, or errors occur
+- Customizable notification types: Session exits, command completion (>3s), command errors, terminal bell, Claude AI turn notifications
+- Smart Claude detection: Automatically identifies Claude CLI sessions and tracks when Claude finishes responding
 - Complete overhaul of the notification system with reliable push notifications for session events
 - Test notification feature now works seamlessly between web frontend and Mac app
-- Real-time notifications for session exits, errors, and important events
 - Improved notification preferences with granular control over notification types
 - Better error handling and recovery for notification delivery failures
 - Enhanced integration between web services and native Mac notification service
 
-#### **Git Worktree Management** (#452)
+#### **Git Worktree Management & Follow Mode** (#452)
 - Full worktree support: Create, manage, and delete Git worktrees directly from VibeTunnel
-- Follow Mode: Terminal sessions automatically navigate to corresponding directories when switching Git branches
+- VibeTunnel intelligently follows Git worktrees instead of just branches, perfect for developers using worktrees for parallel development
+- When you switch branches in your editor/IDE, VibeTunnel automatically switches to the corresponding worktree terminal session
+- The `vt follow` command works contextually - run it from either your main repository or a worktree to set up appropriate tracking
 - Visual indicators: Fork icon (⑂) shows worktree sessions, branch names displayed throughout UI
+- Follow mode displays worktree paths with `~` for your home directory, making them easier to read
 - HTTP Git API: New endpoints for Git operations (`/api/git/status`, `/api/git/branches`, `/api/worktrees`)
 - Branch selection: Choose branches before creating sessions with real-time repository status
-
-#### **Git Worktree Follow Mode** 
-- VibeTunnel now intelligently follows Git worktrees instead of just branches, making it perfect for developers who use worktrees for parallel development
-- When you switch branches in your editor/IDE, VibeTunnel automatically switches to the corresponding worktree terminal session
-- The `vt follow` command now works contextually - run it from either your main repository or a worktree, and it sets up the appropriate tracking
-- Follow mode displays worktree paths with `~` for your home directory, making them easier to read
 
 #### **Comprehensive CJK (Chinese, Japanese, Korean) Input Support** (#480)
 - Full support for CJK input methods with proper IME (Input Method Editor) integration
@@ -32,13 +31,19 @@
 - Enhanced keyboard event handling for complex character composition
 - Better compatibility with native macOS and iOS input methods
 
+#### **Terminal Multiplexer Integration (tmux, Zellij & Screen)** (#460)
+- Full integration with tmux, Zellij, and GNU Screen terminal multiplexers for persistent sessions
+- Create, list, and attach to tmux/Zellij/Screen sessions directly from VibeTunnel interface
+- Sessions persist across VibeTunnel restarts - never lose your work
+- Perfect for remote development: attach to the same session from multiple devices
+- Supports tmux panes and windows for advanced terminal workflows
+- Seamless switching between standard VibeTunnel sessions and multiplexer sessions
+
 #### **Quick Session Switching with Number Keys**
 - When keyboard capture is active, use Cmd+1...9 (Mac) or Ctrl+1...9 (Linux) to instantly switch between sessions
 - Cmd/Ctrl+0 switches to the 10th session
 - Works only when keyboard capture is enabled in session view, allowing quick navigation without mouse
 - Session numbers match the numbers shown in the session list
-
-### 🎨 UI/UX Improvements
 
 #### **Enhanced Git Integration**
 - See branch names, commit status, and sync state in autocomplete suggestions
@@ -58,33 +63,10 @@
 
 #### **Project Organization & Stability**
 - Enhanced VT command reliability with self-healing capabilities - VT sessions now automatically recover from connection issues
-- Restored missing sessionViewElement property in LifecycleEventManager, fixing session lifecycle tracking
-- Updated ConfigService tests to properly handle default notification preferences
 - Fixed menu bar icon not appearing on app launch
-- Resolved memory leaks causing OOM crashes during test runs
-
-#### **iOS Experience Improvements**  
-- Fixed keyboard interface issues that were preventing smooth text input on mobile devices (#484)
-- Resolved keyboard dismissal problems that could leave the interface in an inconsistent state (#484)
-- Enhanced mobile keyboard behavior for better iOS compatibility
-
-#### **Git Integration & UI Polish**
-- Fixed Git worktree UI by hiding the Follow button when viewing the current worktree (prevents confusion) 
-- Resolved checkbox visibility issues after migrating to Tailwind v4
-- Fixed tmux session cleanup to handle detachment gracefully instead of throwing kill errors
-- Improved session path handling - Mac app now uses consistent path-based URLs for sessions
-- Autocomplete dropdown only shows when text field is focused
-- Fixed drag & drop overlay persistence issues
-- Resolved CSS/JS resource loading on nested routes
-- Fixed terminal output corruption in high-volume sessions
-- Corrected menu bar icon opacity states
-- **Terminal Settings UI Restored**: Fixed missing terminal width selector, restored grid layout for width/font/theme options
-- **Worktree Selection UI Improvements**: Fixed confusing dropdown behavior, consistent text regardless of selection state
-- **Intelligent Cursor Following**: Restored smart cursor tracking that keeps cursor visible during text input
 
 #### **Advanced Features**
 - Enhanced Tailscale integration with automatic authentication for seamless secure access (#472)
-- Added full tmux integration for users who prefer tmux-based terminal workflows (#460)
 - Cleaned up VT command output by removing verbose binary path prefixes and socket disconnect noise
 
 #### **Developer Experience**
@@ -94,6 +76,12 @@
 - Removed obsolete bundle identifier references and updated logging configuration
 
 ### 🔧 Technical Improvements
+
+#### **Improved Terminal Output Handling**
+- Enhanced asciinema stream pruning: Removes noisy ANSI sequences for cleaner recordings
+- Better mobile terminal detection to optimize output rendering
+- Fixed terminal resize event handling to prevent output corruption
+- Improved logging for debugging terminal lifecycle issues
 
 #### **Performance & Architecture**
 - Completed Tailwind CSS v4 migration with performance optimizations
@@ -113,13 +101,6 @@
 - Standardized git status terminology - consistently uses 'New' for untracked files across all interfaces
 - Enhanced session cleanup on startup with proper JSON field handling
 
-#### **Test Infrastructure**
-- Comprehensive test cleanup preventing memory exhaustion
-- Updated Playwright tests for new UI structure
-- Fixed TypeScript strict mode compliance
-- Proper mock cleanup and session management
-- Re-enabled previously disabled test files after fixing memory issues
-
 #### **Developer Experience**
 - Improved TypeScript type safety throughout
 - Better error handling and logging
@@ -127,19 +108,6 @@
 - Removed outdated crash investigation documentation
 - Comprehensive JSDoc documentation added to service classes
 - Removed backwards compatibility for older vt command versions
-
-#### **Push Notifications** (#475)
-- Native push notifications for terminal events - get notified when commands complete, sessions start/end, or errors occur
-- Customizable notification types: Session exits, command completion (>3s), command errors, terminal bell, Claude AI turn notifications
-- Web-based onboarding flow for easy setup on macOS and mobile devices
-- Privacy-focused: All notifications are processed locally, no terminal content is sent to servers
-- Smart Claude detection: Automatically identifies Claude CLI sessions and tracks when Claude finishes responding
-
-#### **Improved Terminal Output Handling**
-- Enhanced asciinema stream pruning: Removes noisy ANSI sequences for cleaner recordings
-- Better mobile terminal detection to optimize output rendering
-- Fixed terminal resize event handling to prevent output corruption
-- Improved logging for debugging terminal lifecycle issues
 
 #### **UI/UX Enhancements**
 - Modernized macOS autocomplete dropdown with native SwiftUI materials and transparency
@@ -173,20 +141,19 @@
 - Better handling of iOS-specific keyboard behaviors and quirks
 - Fixed blinking cursor issue in binary terminal mode (#489)
 
-### 📚 Additional Documentation
-
-- Added comprehensive logging documentation with vtlog utility guide
-- Added minimal agent configuration file for amp
-- Improved README with better logging instructions
-
 ### 👥 Contributors
+
+Thank you to all the contributors who helped make this release possible!
 
 First-time contributors to VibeTunnel:
 - [@jblwilliams](https://github.com/jblwilliams) - Removed unused ScreenCaptureKit import from ServerManager (#486)
+- [@lox](https://github.com/lox) - Added Tailscale Serve integration with automatic authentication (#472)
+- [@diegopetrucci](https://github.com/diegopetrucci) - Contributed push notifications onboarding screen (via #474)
 
 Additional contributors:
-- [@hjanuschka](https://github.com/hjanuschka) - Fixed iOS keyboard dismissal issue (#484) and blinking cursor in binary terminal mode (#489)
+- [@hjanuschka](https://github.com/hjanuschka) - Added tmux integration (#460), fixed iOS keyboard dismissal issue (#484), and fixed blinking cursor in binary terminal mode (#489)
 - [@fal3](https://github.com/fal3) - Fixed Test Notification Button to VibeTunnel Mac App (#483)
+- [@hewigovens](https://github.com/hewigovens) - Fixed mobile keyboard layout and text sizing issues (#441) and contributed CJK (Chinese, Japanese, Korean) IME input support (#447, refined in #480)
 
 ## [1.0.0-beta.14] - 2025-07-21
 
