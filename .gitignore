@@ -161,3 +161,4 @@ buildServer.json
 .opencode/
 mac/build-test/
 .env
+.aider*
