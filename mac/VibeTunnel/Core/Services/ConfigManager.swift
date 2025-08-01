@@ -127,10 +127,10 @@ final class ConfigManager {
     private let defaultCommands = [
         QuickStartCommand(name: "✨ claude", command: "claude --dangerously-skip-permissions"),
         QuickStartCommand(name: "✨ gemini", command: "gemini"),
+        QuickStartCommand(name: nil, command: "opencode"),
+        QuickStartCommand(name: nil, command: "crush"),
         QuickStartCommand(name: nil, command: "zsh"),
-        QuickStartCommand(name: nil, command: "python3"),
-        QuickStartCommand(name: nil, command: "node"),
-        QuickStartCommand(name: "▶️ pnpm run dev", command: "pnpm run dev")
+        QuickStartCommand(name: nil, command: "node")
     ]
 
     private init() {

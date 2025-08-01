@@ -421,9 +421,13 @@ export class SessionList extends LitElement {
 
   private async handleFollowModeChange(repoPath: string, followBranch: string | undefined) {
     this.repoFollowMode.set(repoPath, followBranch);
-    // Create new map without this repo's dropdown
+    // Close all dropdowns for this repo (they might have different section keys)
     const newFollowDropdown = new Map(this.showFollowDropdown);
-    newFollowDropdown.delete(repoPath);
+    for (const [key] of newFollowDropdown) {
+      if (key.startsWith(`${repoPath}:`)) {
+        newFollowDropdown.delete(key);
+      }
+    }
     this.showFollowDropdown = newFollowDropdown;
     this.requestUpdate();
 
@@ -498,7 +502,7 @@ export class SessionList extends LitElement {
       return html``;
     }
 
-    const displayText = followMode ? `Following: ${followMode}` : 'Standalone';
+    const displayText = followMode ? followMode : 'Standalone';
 
     return html`
       <div class="relative">
