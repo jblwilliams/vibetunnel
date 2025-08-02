@@ -16,11 +16,9 @@ struct NotificationPermissionPageView: View {
         category: "NotificationPermissionPageView"
     )
 
-    #if DEBUG
-        init(permissionStatus: UNAuthorizationStatus = .notDetermined) {
-            self.permissionStatus = permissionStatus
-        }
-    #endif
+    init(permissionStatus: UNAuthorizationStatus = .notDetermined) {
+        self.permissionStatus = permissionStatus
+    }
 
     var body: some View {
         VStack(spacing: 30) {
