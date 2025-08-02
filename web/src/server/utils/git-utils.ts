@@ -86,21 +86,3 @@ export async function isWorktree(gitPath: string): Promise<boolean> {
     return false;
   }
 }
-
-/**
- * Get follow mode status for a repository
- * @param repoPath Repository path
- * @returns Current follow branch or undefined
- */
-export async function getFollowBranch(repoPath: string): Promise<string | undefined> {
-  try {
-    const { stdout } = await execFile('git', ['config', 'vibetunnel.followBranch'], {
-      cwd: repoPath,
-    });
-    const followBranch = stdout.trim();
-    return followBranch || undefined;
-  } catch {
-    // Config not set - follow mode is disabled
-    return undefined;
-  }
-}

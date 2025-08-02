@@ -345,61 +345,6 @@ export class GitService {
   }
 
   /**
-   * Switch to a branch and enable follow mode
-   *
-   * Performs a Git checkout to switch the main repository to a different branch
-   * and enables follow mode for that branch. This operation affects the main
-   * repository, not worktrees.
-   *
-   * **What this does:**
-   * 1. Attempts to checkout the specified branch in the main repository
-   * 2. If successful, enables follow mode for that branch
-   * 3. If checkout fails (e.g., uncommitted changes), the operation is aborted
-   *
-   * **Follow mode behavior:**
-   * - Once enabled, the main repository will automatically follow any checkout
-   *   operations performed in worktrees of the followed branch
-   * - Follow mode state is stored in Git config as `vibetunnel.followBranch`
-   *
-   * @param repoPath - Absolute path to the repository root
-   * @param branch - Branch name to switch to (must exist in the repository)
-   *
-   * @example
-   * ```typescript
-   * // Switch main repository to feature branch and enable follow mode
-   * await gitService.switchBranch('/path/to/repo', 'feature/new-ui');
-   *
-   * // Now the main repository is on 'feature/new-ui' branch
-   * // and will follow any checkout operations in its worktrees
-   * ```
-   *
-   * @throws Error if:
-   * - The branch doesn't exist
-   * - There are uncommitted changes preventing the switch
-   * - The repository path is invalid
-   * - The API request fails
-   */
-  async switchBranch(repoPath: string, branch: string): Promise<void> {
-    try {
-      const response = await fetch('/api/worktrees/switch', {
-        method: HttpMethod.POST,
-        headers: {
-          'Content-Type': 'application/json',
-          ...this.authClient.getAuthHeader(),
-        },
-        body: JSON.stringify({ repoPath, branch }),
-      });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(error.error || `Failed to switch branch: ${response.statusText}`);
-      }
-    } catch (error) {
-      logger.error('Failed to switch branch:', error);
-      throw error;
-    }
-  }
-
-  /**
    * Enable or disable follow mode
    *
    * Controls automatic synchronization between the main repository and worktrees.
@@ -407,7 +352,7 @@ export class GitService {
    * checkout that branch whenever any of its worktrees perform a checkout operation.
    *
    * This feature uses Git hooks (post-checkout, post-commit) and stores state in
-   * the Git config as `vibetunnel.followBranch`.
+   * the Git config as `vibetunnel.followWorktree`.
    *
    * **Important behaviors:**
    * - Only one branch can have follow mode enabled at a time

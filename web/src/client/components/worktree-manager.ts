@@ -81,19 +81,17 @@ export class WorktreeManager extends LitElement {
       return;
     }
 
-    try {
-      await this.gitService.switchBranch(this.repoPath, branch);
-      this.dispatchEvent(new CustomEvent('back'));
-    } catch (err) {
-      logger.error('Failed to switch branch:', err);
-      this.dispatchEvent(
-        new CustomEvent('error', {
-          detail: {
-            message: `Failed to switch to ${branch}: ${err instanceof Error ? err.message : 'Unknown error'}`,
-          },
-        })
-      );
-    }
+    // Direct branch switching without worktrees is no longer supported
+    logger.log(
+      `Branch switching to ${branch} requested, but direct branch switching is not supported. Use worktrees instead.`
+    );
+    this.dispatchEvent(
+      new CustomEvent('error', {
+        detail: {
+          message: `Direct branch switching is no longer supported. Create a worktree for branch '${branch}' instead.`,
+        },
+      })
+    );
   }
 
   private async handleDeleteWorktree(branch: string, hasChanges: boolean) {

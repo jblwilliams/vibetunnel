@@ -54,7 +54,7 @@ export class QuickStartSection extends LitElement {
 
   render() {
     return html`
-      <div class="${this.editMode ? '' : 'mb-3 sm:mb-4'}">
+      <div class="${this.editMode ? 'mt-3 sm:mt-4 mb-3 sm:mb-4' : 'mb-3 sm:mb-4'}">
         ${
           this.editMode
             ? html`

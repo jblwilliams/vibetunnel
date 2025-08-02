@@ -16,7 +16,6 @@ describe('Worktree Creation UI', () => {
       listWorktrees: vi.fn(),
       createWorktree: vi.fn(),
       deleteWorktree: vi.fn(),
-      switchBranch: vi.fn(),
       setFollowMode: vi.fn(),
     } as unknown as GitService;
 

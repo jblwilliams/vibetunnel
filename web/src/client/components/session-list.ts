@@ -22,6 +22,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import type { Session } from '../../shared/types.js';
 import { HttpMethod } from '../../shared/types.js';
 import type { AuthClient } from '../services/auth-client.js';
+import type { Worktree } from '../services/git-service.js';
 import './session-card.js';
 import './inline-edit.js';
 import './session-list/compact-session-card.js';
@@ -29,6 +30,7 @@ import './session-list/repository-header.js';
 import { getBaseRepoName } from '../../shared/utils/git.js';
 import { Z_INDEX } from '../utils/constants.js';
 import { createLogger } from '../utils/logger.js';
+import { formatPathForDisplay } from '../utils/path-utils.js';
 
 const logger = createLogger('session-list');
 
@@ -50,10 +52,7 @@ export class SessionList extends LitElement {
   @state() private repoFollowMode = new Map<string, string | undefined>();
   @state() private loadingFollowMode = new Set<string>();
   @state() private showFollowDropdown = new Map<string, boolean>();
-  @state() private repoWorktrees = new Map<
-    string,
-    Array<{ path: string; branch: string; HEAD: string; detached: boolean }>
-  >();
+  @state() private repoWorktrees = new Map<string, Worktree[]>();
   @state() private loadingWorktrees = new Set<string>();
   @state() private showWorktreeDropdown = new Map<string, boolean>();
 
@@ -79,8 +78,8 @@ export class SessionList extends LitElement {
   private async loadFollowModeForAllRepos() {
     const repoGroups = this.groupSessionsByRepo(this.sessions);
     for (const [repoPath] of repoGroups) {
-      if (repoPath && !this.repoFollowMode.has(repoPath)) {
-        this.loadFollowModeForRepo(repoPath);
+      if (repoPath && !this.repoWorktrees.has(repoPath)) {
+        // loadWorktreesForRepo now also loads follow mode
         this.loadWorktreesForRepo(repoPath);
       }
     }
@@ -99,6 +98,8 @@ export class SessionList extends LitElement {
     const isInsideSelector =
       target.closest('[id^="branch-selector-"]') ||
       target.closest('.branch-dropdown') ||
+      target.closest('[id^="follow-selector-"]') ||
+      target.closest('.follow-dropdown') ||
       target.closest('[id^="worktree-selector-"]') ||
       target.closest('.worktree-dropdown');
 
@@ -389,36 +390,6 @@ export class SessionList extends LitElement {
     return getBaseRepoName(repoPath);
   }
 
-  private async loadFollowModeForRepo(repoPath: string) {
-    if (this.loadingFollowMode.has(repoPath)) {
-      return;
-    }
-
-    this.loadingFollowMode.add(repoPath);
-    this.requestUpdate();
-
-    try {
-      const response = await fetch(
-        `/api/repositories/follow-mode?${new URLSearchParams({ path: repoPath })}`,
-        {
-          headers: this.authClient.getAuthHeader(),
-        }
-      );
-
-      if (response.ok) {
-        const { followBranch } = await response.json();
-        this.repoFollowMode.set(repoPath, followBranch);
-      } else {
-        logger.error(`Failed to load follow mode for ${repoPath}`);
-      }
-    } catch (error) {
-      logger.error('Error loading follow mode:', error);
-    } finally {
-      this.loadingFollowMode.delete(repoPath);
-      this.requestUpdate();
-    }
-  }
-
   private async handleFollowModeChange(repoPath: string, followBranch: string | undefined) {
     this.repoFollowMode.set(repoPath, followBranch);
     // Close all dropdowns for this repo (they might have different section keys)
@@ -432,13 +403,17 @@ export class SessionList extends LitElement {
     this.requestUpdate();
 
     try {
-      const response = await fetch('/api/repositories/follow-mode', {
+      const response = await fetch('/api/worktrees/follow', {
         method: HttpMethod.POST,
         headers: {
           'Content-Type': 'application/json',
           ...this.authClient.getAuthHeader(),
         },
-        body: JSON.stringify({ repoPath, followBranch }),
+        body: JSON.stringify({
+          repoPath,
+          branch: followBranch,
+          enable: !!followBranch,
+        }),
       });
 
       if (!response.ok) {
@@ -448,7 +423,7 @@ export class SessionList extends LitElement {
       const event = new CustomEvent('show-toast', {
         detail: {
           message: followBranch
-            ? `Following worktree branch: ${followBranch}`
+            ? `Following worktree branch: ${followBranch.replace(/^refs\/heads\//, '')}`
             : 'Follow mode disabled',
           type: 'success',
         },
@@ -470,18 +445,26 @@ export class SessionList extends LitElement {
   private toggleFollowDropdown(dropdownKey: string) {
     const isOpen = this.showFollowDropdown.get(dropdownKey) || false;
 
-    // Create new maps to avoid intermediate states during update
-    const newFollowDropdown = new Map<string, boolean>();
-    const newWorktreeDropdown = new Map<string, boolean>();
+    // Create new maps preserving existing state
+    const newFollowDropdown = new Map(this.showFollowDropdown);
+    const newWorktreeDropdown = new Map(this.showWorktreeDropdown);
 
-    // Only set the clicked dropdown if it wasn't already open
-    if (!isOpen) {
+    if (isOpen) {
+      // Close this dropdown
+      newFollowDropdown.delete(dropdownKey);
+    } else {
+      // Close all other dropdowns and open this one
+      newFollowDropdown.clear();
       newFollowDropdown.set(dropdownKey, true);
+
       // Extract repo path from dropdown key for loading
       const repoPath = dropdownKey.split(':')[0];
-      // Load follow mode if not already loaded
-      this.loadFollowModeForRepo(repoPath);
+      // Load worktrees and follow mode if not already loaded
+      this.loadWorktreesForRepo(repoPath);
     }
+
+    // Close all worktree dropdowns to avoid conflicts
+    newWorktreeDropdown.clear();
 
     // Update state atomically
     this.showFollowDropdown = newFollowDropdown;
@@ -497,12 +480,35 @@ export class SessionList extends LitElement {
     const dropdownKey = `${repoPath}:${sectionType}`;
     const isDropdownOpen = this.showFollowDropdown.get(dropdownKey) || false;
 
-    // Only show if there are worktrees
-    if (worktrees.length === 0) {
+    // Get sessions in this repo group to determine current context
+    const repoSessions = this.sessions.filter(
+      (session) => (session.gitMainRepoPath || session.gitRepoPath) === repoPath
+    );
+
+    // The main repository is the one whose path matches the repoPath
+    // All other worktrees are linked worktrees in separate directories
+    const actualWorktrees = worktrees.filter((wt) => {
+      // Normalize paths for comparison (handle macOS /private symlinks)
+      const normalizedWorktreePath = wt.path.replace(/^\/private/, '');
+      const normalizedRepoPath = repoPath.replace(/^\/private/, '');
+      return normalizedWorktreePath !== normalizedRepoPath;
+    });
+
+    // Determine if any session in this group is in a worktree (not the main repo)
+    const isInWorktree = repoSessions.some((session) => {
+      if (!session.workingDir) return false;
+      // Check if session is in any actual worktree path
+      return actualWorktrees.some((wt) => session.workingDir?.startsWith(wt.path));
+    });
+
+    // Show follow mode dropdown if:
+    // 1. We're currently in a worktree (affects main repository), OR
+    // 2. We're in main repo AND there are actual worktrees to follow
+    if (!isInWorktree && actualWorktrees.length === 0) {
       return html``;
     }
 
-    const displayText = followMode ? followMode : 'Standalone';
+    const displayText = followMode ? followMode.replace(/^refs\/heads\//, '') : 'Standalone';
 
     return html`
       <div class="relative">
@@ -541,17 +547,17 @@ export class SessionList extends LitElement {
                 ${!followMode ? html`<span class="text-accent-primary">✓</span>` : ''}
               </button>
               
-              ${worktrees.map(
+              ${actualWorktrees.map(
                 (worktree) => html`
                 <button
                   class="w-full text-left px-3 py-2 text-xs hover:bg-bg-elevated transition-colors flex items-center justify-between"
                   @click=${() => this.handleFollowModeChange(repoPath, worktree.branch)}
                 >
-                  <div class="flex items-center gap-2">
+                  <div class="flex flex-col gap-1">
                     <span class="font-mono ${followMode === worktree.branch ? 'text-accent-primary font-semibold' : ''}">
-                      Follow: ${worktree.branch}
+                      Follow: ${worktree.branch.replace(/^refs\/heads\//, '')}
                     </span>
-                    <span class="text-[10px] text-text-muted">${worktree.path}</span>
+                    <span class="text-[10px] text-text-muted">${formatPathForDisplay(worktree.path)}</span>
                   </div>
                   ${followMode === worktree.branch ? html`<span class="text-accent-primary">✓</span>` : ''}
                 </button>
@@ -582,6 +588,8 @@ export class SessionList extends LitElement {
       if (response.ok) {
         const data = await response.json();
         this.repoWorktrees.set(repoPath, data.worktrees || []);
+        // Also set follow mode from the worktrees API response
+        this.repoFollowMode.set(repoPath, data.followBranch);
       } else {
         logger.error(`Failed to load worktrees for ${repoPath}`);
       }

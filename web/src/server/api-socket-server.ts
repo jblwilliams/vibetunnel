@@ -231,22 +231,7 @@ export class ApiSocketServer {
             };
           }
         } catch (_e) {
-          // Check for legacy follow mode
-          try {
-            const { stdout } = await execGit(['config', 'vibetunnel.followBranch'], {
-              cwd: mainRepoPath,
-            });
-            const followBranch = stdout.trim();
-            if (followBranch) {
-              followMode = {
-                enabled: true,
-                branch: followBranch,
-                repoPath: prettifyPath(mainRepoPath),
-              };
-            }
-          } catch (_e2) {
-            // No follow mode configured
-          }
+          // No follow mode configured
         }
       } catch (_error) {
         // Not in a git repo
@@ -429,15 +414,6 @@ export class ApiSocketServer {
         await execGit(['config', '--local', '--unset', 'vibetunnel.followWorktree'], {
           cwd: absoluteMainRepo,
         });
-
-        // Also try to unset the old config for backward compatibility
-        try {
-          await execGit(['config', '--local', '--unset', 'vibetunnel.followBranch'], {
-            cwd: absoluteMainRepo,
-          });
-        } catch {
-          // Ignore if it doesn't exist
-        }
 
         // Get the worktree path that was being followed
         let followedWorktree: string | undefined;

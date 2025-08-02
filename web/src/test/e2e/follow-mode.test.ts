@@ -194,9 +194,9 @@ describe.skip('Follow Mode End-to-End Tests', () => {
       expect(response.body.enabled).toBe(true);
       expect(response.body.branch).toBe('develop');
 
-      // Verify git config was set
-      const { stdout: configOutput } = await gitExec(['config', 'vibetunnel.followBranch']);
-      expect(configOutput).toBe('develop');
+      // Verify git config was set (should contain worktree path, not branch name)
+      const { stdout: configOutput } = await gitExec(['config', 'vibetunnel.followWorktree']);
+      expect(configOutput).toBe(worktreePath); // Should be the worktree path, not branch name
 
       // Verify hooks were installed
       const postCommitExists = await fs
@@ -271,7 +271,7 @@ describe.skip('Follow Mode End-to-End Tests', () => {
 
       // Check that follow mode was disabled (config should not exist)
       try {
-        await gitExec(['config', 'vibetunnel.followBranch']);
+        await gitExec(['config', 'vibetunnel.followWorktree']);
         // If we get here, the config still exists
         expect(true).toBe(false); // Fail the test
       } catch (error) {
@@ -299,7 +299,7 @@ describe.skip('Follow Mode End-to-End Tests', () => {
 
       // Verify git config was removed
       try {
-        await gitExec(['config', 'vibetunnel.followBranch']);
+        await gitExec(['config', 'vibetunnel.followWorktree']);
         // If we get here, the config still exists
         expect(true).toBe(false); // Fail the test
       } catch (error) {

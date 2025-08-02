@@ -46,14 +46,14 @@ export async function checkFollowMode(
   authClient: AuthClient
 ): Promise<{ followMode: boolean; followBranch: string | null }> {
   try {
-    const response = await fetch(`/api/git/follow?${new URLSearchParams({ path: repoPath })}`, {
+    const response = await fetch(`/api/worktrees?${new URLSearchParams({ repoPath })}`, {
       headers: authClient.getAuthHeader(),
     });
 
     if (response.ok) {
       const data = await response.json();
       return {
-        followMode: data.followMode || false,
+        followMode: !!data.followBranch,
         followBranch: data.followBranch || null,
       };
     } else {

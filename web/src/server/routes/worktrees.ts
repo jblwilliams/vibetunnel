@@ -267,15 +267,31 @@ export function createWorktreeRoutes(): Router {
       const baseBranch = await detectDefaultBranch(absoluteRepoPath);
       logger.debug(`Using base branch: ${baseBranch}`);
 
-      // Get follow branch if configured
+      // Get follow worktree if configured
       let followBranch: string | undefined;
       try {
-        const { stdout } = await execGit(['config', 'vibetunnel.followBranch'], {
+        const { stdout } = await execGit(['config', 'vibetunnel.followWorktree'], {
           cwd: absoluteRepoPath,
         });
-        followBranch = stdout.trim() || undefined;
+        const followWorktreePath = stdout.trim();
+
+        if (followWorktreePath) {
+          // Find the branch for this worktree path - we need to parse worktrees first
+          // This is a bit of a circular dependency, so let's get minimal worktree info
+          const { stdout: worktreeListOutput } = await execGit(
+            ['worktree', 'list', '--porcelain'],
+            {
+              cwd: absoluteRepoPath,
+            }
+          );
+          const allWorktrees = parseWorktreePorcelain(worktreeListOutput);
+          const followWorktree = allWorktrees.find((w: Worktree) => w.path === followWorktreePath);
+          if (followWorktree) {
+            followBranch = followWorktree.branch.replace(/^refs\/heads\//, '');
+          }
+        }
       } catch {
-        // No follow branch configured
+        // No follow worktree configured
       }
 
       // Get worktree list
@@ -445,63 +461,6 @@ export function createWorktreeRoutes(): Router {
   });
 
   /**
-   * POST /api/worktrees/switch
-   * Switch main repository to a branch and enable follow mode
-   */
-  router.post('/worktrees/switch', async (req, res) => {
-    try {
-      const { repoPath, branch } = req.body;
-
-      if (!repoPath || typeof repoPath !== 'string') {
-        return res.status(400).json({
-          error: 'Missing or invalid repoPath in request body',
-        });
-      }
-
-      if (!branch || typeof branch !== 'string') {
-        return res.status(400).json({
-          error: 'Missing or invalid branch in request body',
-        });
-      }
-
-      const absoluteRepoPath = path.resolve(repoPath);
-      logger.debug(`Switching to branch: ${branch} in repo: ${absoluteRepoPath}`);
-
-      // Check for uncommitted changes before switching
-      const hasChanges = await hasUncommittedChanges(absoluteRepoPath);
-      if (hasChanges) {
-        return res.status(400).json({
-          error: 'Cannot switch branches with uncommitted changes',
-          details: 'Please commit or stash your changes before switching branches',
-        });
-      }
-
-      // Switch to the branch
-      await execGit(['checkout', branch], { cwd: absoluteRepoPath });
-
-      // Enable follow mode for the switched branch
-      await execGit(['config', '--local', 'vibetunnel.followBranch', branch], {
-        cwd: absoluteRepoPath,
-      });
-
-      logger.info(`Successfully switched to branch: ${branch} with follow mode enabled`);
-      return res.json({
-        success: true,
-        message: 'Switched to branch and enabled follow mode',
-        branch,
-        currentBranch: branch,
-      });
-    } catch (error) {
-      logger.error('Error switching branch:', error);
-      const gitError = error as GitError;
-      return res.status(500).json({
-        error: 'Failed to switch branch',
-        details: gitError.stderr || gitError.message,
-      });
-    }
-  });
-
-  /**
    * POST /api/worktrees
    * Create a new worktree
    */
@@ -616,12 +575,62 @@ export function createWorktreeRoutes(): Router {
           logger.info('Git hooks installed successfully');
         }
 
-        // Set the follow mode config to the branch name
-        await execGit(['config', '--local', 'vibetunnel.followBranch', branch], {
+        // Get worktree information to find the path for this branch
+        const { stdout: worktreeListOutput } = await execGit(['worktree', 'list', '--porcelain'], {
+          cwd: absoluteRepoPath,
+        });
+        const allWorktrees = parseWorktreePorcelain(worktreeListOutput);
+        const worktree = allWorktrees.find(
+          (w) =>
+            w.branch === branch ||
+            w.branch === `refs/heads/${branch}` ||
+            w.branch.replace(/^refs\/heads\//, '') === branch
+        );
+
+        if (!worktree) {
+          return res.status(400).json({
+            error: `No worktree found for branch: ${branch}`,
+          });
+        }
+
+        // Set the follow worktree path (not branch name)
+        await execGit(['config', '--local', 'vibetunnel.followWorktree', worktree.path], {
           cwd: absoluteRepoPath,
         });
 
         logger.info(`Follow mode enabled for branch: ${branch}`);
+
+        // Immediately sync main repository to the followed branch
+        try {
+          // Strip refs/heads/ prefix if present
+          const cleanBranch = branch.replace(/^refs\/heads\//, '');
+
+          // Check if the branch exists locally
+          const { stdout: branchList } = await execGit(['branch', '--list', cleanBranch], {
+            cwd: absoluteRepoPath,
+          });
+
+          if (branchList.trim()) {
+            // Branch exists locally, switch to it
+            await execGit(['checkout', cleanBranch], { cwd: absoluteRepoPath });
+            logger.info(`Main repository switched to branch: ${cleanBranch}`);
+          } else {
+            // Branch doesn't exist locally, try to fetch and create it
+            try {
+              await execGit(['fetch', 'origin', `${cleanBranch}:${cleanBranch}`], {
+                cwd: absoluteRepoPath,
+              });
+              await execGit(['checkout', cleanBranch], { cwd: absoluteRepoPath });
+              logger.info(`Fetched and switched to branch: ${cleanBranch}`);
+            } catch (error) {
+              logger.warn(`Could not fetch/switch to branch ${cleanBranch}:`, error);
+              // Don't fail follow mode enable if branch switch fails
+            }
+          }
+        } catch (error) {
+          logger.warn(`Could not immediately switch to branch ${branch}:`, error);
+          // Don't fail follow mode enable if branch switch fails
+        }
 
         // Send notification to Mac app
         if (controlUnixHandler.isMacAppConnected()) {
@@ -642,8 +651,8 @@ export function createWorktreeRoutes(): Router {
           hooksInstallResult: hooksInstallResult,
         });
       } else {
-        // Unset the follow branch config
-        await execGit(['config', '--local', '--unset', 'vibetunnel.followBranch'], {
+        // Unset the follow worktree config
+        await execGit(['config', '--local', '--unset', 'vibetunnel.followWorktree'], {
           cwd: absoluteRepoPath,
         });
 

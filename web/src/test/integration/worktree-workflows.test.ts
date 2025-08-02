@@ -93,42 +93,6 @@ describe('Worktree Workflows Integration Tests', () => {
       expect(featureWorktree.path).toContain('worktree-feature-test-feature');
     });
 
-    it('should switch branches in main worktree', async () => {
-      // Switch to bugfix branch (not used by any worktree)
-      const switchResponse = await request(testServer.app).post('/api/worktrees/switch').send({
-        repoPath: gitRepo.repoPath,
-        branch: 'bugfix/critical-fix',
-      });
-
-      expect(switchResponse.status).toBe(200);
-      expect(switchResponse.body.success).toBe(true);
-      expect(switchResponse.body.currentBranch).toBe('bugfix/critical-fix');
-
-      // Verify the branch was actually switched
-      const { stdout } = await gitRepo.gitExec(['branch', '--show-current']);
-      expect(stdout).toBe('bugfix/critical-fix');
-
-      // Switch back to main
-      await gitRepo.gitExec(['checkout', 'main']);
-    });
-
-    it('should handle uncommitted changes when switching branches', async () => {
-      // Create uncommitted changes
-      await fs.writeFile(path.join(gitRepo.repoPath, 'uncommitted.txt'), 'test content');
-
-      // Try to switch branch (should fail)
-      const switchResponse = await request(testServer.app).post('/api/worktrees/switch').send({
-        repoPath: gitRepo.repoPath,
-        branch: 'develop',
-      });
-
-      expect(switchResponse.status).toBe(400);
-      expect(switchResponse.body.error).toContain('uncommitted changes');
-
-      // Clean up
-      await fs.unlink(path.join(gitRepo.repoPath, 'uncommitted.txt'));
-    });
-
     it('should delete worktree', async () => {
       // Create a temporary worktree to delete
       const tempBranch = 'temp/delete-test';
@@ -202,31 +166,47 @@ describe('Worktree Workflows Integration Tests', () => {
   });
 
   describe('Follow Mode', () => {
-    it('should enable follow mode', async () => {
+    it('should enable follow mode for existing worktree', async () => {
+      // Use the existing worktree for feature/test-feature
       const response = await request(testServer.app).post('/api/worktrees/follow').send({
         repoPath: gitRepo.repoPath,
-        branch: 'develop',
+        branch: 'feature/test-feature',
         enable: true,
       });
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.enabled).toBe(true);
-      expect(response.body.branch).toBe('develop');
+      expect(response.body.branch).toBe('feature/test-feature');
 
-      // Verify git config was set
-      const { stdout } = await gitRepo.gitExec(['config', 'vibetunnel.followBranch']);
-      expect(stdout).toBe('develop');
+      // Verify git config was set (should contain worktree path, not branch name)
+      const { stdout } = await gitRepo.gitExec(['config', 'vibetunnel.followWorktree']);
+      // The worktree path should end with the branch slug
+      expect(stdout).toContain('worktree-feature-test-feature');
     });
 
     it('should disable follow mode', async () => {
+      // First, get the list of worktrees to find the correct path
+      const worktreesResponse = await request(testServer.app)
+        .get('/api/worktrees')
+        .query({ repoPath: gitRepo.repoPath });
+
+      const featureWorktree = worktreesResponse.body.worktrees.find((w: { branch: string }) =>
+        w.branch.includes('feature/test-feature')
+      );
+
       // First enable follow mode
-      await gitRepo.gitExec(['config', '--local', 'vibetunnel.followBranch', 'develop']);
+      await gitRepo.gitExec([
+        'config',
+        '--local',
+        'vibetunnel.followWorktree',
+        featureWorktree.path,
+      ]);
 
       // Disable it
       const response = await request(testServer.app).post('/api/worktrees/follow').send({
         repoPath: gitRepo.repoPath,
-        branch: 'develop',
+        branch: 'feature/test-feature',
         enable: false,
       });
 
@@ -236,7 +216,7 @@ describe('Worktree Workflows Integration Tests', () => {
 
       // Verify git config was removed
       try {
-        await gitRepo.gitExec(['config', 'vibetunnel.followBranch']);
+        await gitRepo.gitExec(['config', 'vibetunnel.followWorktree']);
         expect(true).toBe(false); // Should not reach here
       } catch (error) {
         // Expected - config should not exist

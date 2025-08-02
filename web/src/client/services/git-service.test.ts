@@ -327,42 +327,6 @@ describe('GitService', () => {
     });
   });
 
-  describe('switchBranch', () => {
-    it('should switch to a branch', async () => {
-      const mockFetch = vi.fn(async () => ({
-        ok: true,
-        status: 200,
-        json: async () => ({}),
-      }));
-      global.fetch = mockFetch as typeof global.fetch;
-
-      await gitService.switchBranch('/home/user/project', 'develop');
-
-      const call = mockFetch.mock.calls[0];
-      expect(call[0]).toBe('/api/worktrees/switch');
-      expect(call[1]?.method).toBe('POST');
-
-      const requestBody = JSON.parse(call[1]?.body as string);
-      expect(requestBody).toEqual({
-        repoPath: '/home/user/project',
-        branch: 'develop',
-      });
-    });
-
-    it('should handle switch errors', async () => {
-      const mockFetch = vi.fn(async () => ({
-        ok: false,
-        status: 404,
-        json: async () => ({ error: 'Branch not found' }),
-      }));
-      global.fetch = mockFetch as typeof global.fetch;
-
-      await expect(gitService.switchBranch('/home/user/project', 'nonexistent')).rejects.toThrow(
-        'Branch not found'
-      );
-    });
-  });
-
   describe('setFollowMode', () => {
     it('should enable follow mode', async () => {
       const mockFetch = vi.fn(async () => ({
@@ -451,7 +415,6 @@ describe('GitService', () => {
         () => gitService.createWorktree('/repo', 'branch', '/path'),
         () => gitService.deleteWorktree('/repo', 'branch'),
         () => gitService.pruneWorktrees('/repo'),
-        () => gitService.switchBranch('/repo', 'branch'),
         () => gitService.setFollowMode('/repo', 'branch', true),
       ];
 

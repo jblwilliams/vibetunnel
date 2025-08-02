@@ -484,24 +484,13 @@ export class SessionCreateForm extends LitElement {
       // Not using worktree but selected a different branch - attempt to switch
       logger.log(`Attempting to switch from ${this.currentBranch} to ${this.selectedBaseBranch}`);
 
-      try {
-        if (this.gitService && this.gitRepoInfo.repoPath) {
-          await this.gitService.switchBranch(this.gitRepoInfo.repoPath, this.selectedBaseBranch);
-          effectiveBranch = this.selectedBaseBranch;
-          logger.log(`Successfully switched to branch: ${this.selectedBaseBranch}`);
-        }
-      } catch (error) {
-        // Branch switch failed - show warning but continue with current branch
-        logger.warn(`Failed to switch branch: ${error}`);
-        effectiveBranch = this.currentBranch;
+      // Direct branch switching without worktrees is no longer supported
+      logger.log(
+        `Selected branch ${this.selectedBaseBranch} differs from current branch ${this.currentBranch}, but direct branch switching is not supported. Using current branch.`
+      );
+      effectiveBranch = this.currentBranch;
 
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        const isUncommittedChanges = errorMessage.toLowerCase().includes('uncommitted changes');
-
-        this.branchSwitchWarning = isUncommittedChanges
-          ? `Cannot switch to ${this.selectedBaseBranch} due to uncommitted changes. Creating session on ${this.currentBranch}.`
-          : `Failed to switch to ${this.selectedBaseBranch}: ${errorMessage}. Creating session on ${this.currentBranch}.`;
-      }
+      this.branchSwitchWarning = `Cannot switch to ${this.selectedBaseBranch} without a worktree. Create a worktree or use the current branch ${this.currentBranch}.`;
     } else {
       // Using current branch
       effectiveBranch = this.selectedBaseBranch || this.currentBranch;
