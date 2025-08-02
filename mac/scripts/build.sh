@@ -114,8 +114,8 @@ fi
 if command -v xcbeautify &> /dev/null; then
     echo "🔨 Building ARM64-only binary with xcbeautify..."
     xcodebuild \
-        -project VibeTunnel-Mac.xcodeproj \
-        -scheme VibeTunnel-Mac \
+        -project VibeTunnel.xcodeproj \
+        -scheme VibeTunnel \
         -configuration "$CONFIGURATION" \
         $DERIVED_DATA_ARG \
         -destination "platform=macOS,arch=arm64" \
@@ -127,8 +127,8 @@ if command -v xcbeautify &> /dev/null; then
 else
     echo "🔨 Building ARM64-only binary (install xcbeautify for cleaner output)..."
     xcodebuild \
-        -project VibeTunnel-Mac.xcodeproj \
-        -scheme VibeTunnel-Mac \
+        -project VibeTunnel.xcodeproj \
+        -scheme VibeTunnel \
         -configuration "$CONFIGURATION" \
         $DERIVED_DATA_ARG \
         -destination "platform=macOS,arch=arm64" \
@@ -150,7 +150,7 @@ else
     
     if [[ -z "$APP_PATH" ]]; then
         # Fallback: try to get from xcode-select
-        BUILT_PRODUCTS_DIR=$(xcodebuild -project VibeTunnel-Mac.xcodeproj -scheme VibeTunnel-Mac -configuration "$CONFIGURATION" -showBuildSettings | grep "BUILT_PRODUCTS_DIR" | head -n 1 | awk '{print $3}')
+        BUILT_PRODUCTS_DIR=$(xcodebuild -project VibeTunnel.xcodeproj -scheme VibeTunnel -configuration "$CONFIGURATION" -showBuildSettings | grep "BUILT_PRODUCTS_DIR" | head -n 1 | awk '{print $3}')
         if [[ -n "$BUILT_PRODUCTS_DIR" ]]; then
             APP_PATH="$BUILT_PRODUCTS_DIR/VibeTunnel.app"
         fi

@@ -181,7 +181,7 @@ echo ""
 
 # Check if Xcode project uses version.xcconfig
 echo "📌 Xcode Project Configuration:"
-XCODEPROJ="$PROJECT_ROOT/VibeTunnel-Mac.xcodeproj/project.pbxproj"
+XCODEPROJ="$PROJECT_ROOT/VibeTunnel.xcodeproj/project.pbxproj"
 if [[ -f "$XCODEPROJ" ]]; then
     if grep -q "version.xcconfig" "$XCODEPROJ"; then
         check_pass "Xcode project references version.xcconfig"

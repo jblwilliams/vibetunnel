@@ -467,13 +467,13 @@ else
 fi
 
 # Check if Xcode project was modified and commit if needed
-if ! git diff --quiet "$PROJECT_ROOT/VibeTunnel-Mac.xcodeproj/project.pbxproj"; then
+if ! git diff --quiet "$PROJECT_ROOT/VibeTunnel.xcodeproj/project.pbxproj"; then
     if [[ "$DRY_RUN" == "true" ]]; then
         echo "📝 Would commit Xcode project changes"
         echo "   Commit message: Update Xcode project for build $BUILD_NUMBER"
     else
         echo "📝 Committing Xcode project changes..."
-        git add "$PROJECT_ROOT/VibeTunnel-Mac.xcodeproj/project.pbxproj"
+        git add "$PROJECT_ROOT/VibeTunnel.xcodeproj/project.pbxproj"
         git commit -m "Update Xcode project for build $BUILD_NUMBER"
         echo -e "${GREEN}✅ Xcode project changes committed${NC}"
     fi
