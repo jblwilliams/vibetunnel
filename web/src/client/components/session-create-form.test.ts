@@ -877,16 +877,18 @@ describe('SessionCreateForm', () => {
         sessionId: 'git-session-123',
       });
 
-      // Set up Git repository state
-      element.gitRepoInfo = {
-        isGitRepo: true,
-        repoPath: '/home/user/project',
-        hasChanges: false,
-        isWorktree: false,
-      };
-      element.selectedBaseBranch = 'feature';
-      element.command = 'vim';
+      // Set up working directory and command first
       element.workingDir = '/home/user/project';
+      element.command = 'vim';
+      
+      // Trigger Git repository check which will load currentBranch and selectedBaseBranch
+      // @ts-expect-error - accessing private method for testing
+      await element.checkGitRepository();
+      await element.updateComplete;
+      
+      // The Git check should have loaded the repository info and set currentBranch to 'main'
+      // and selectedBaseBranch should also be 'main' (current branch is selected by default)
+      // This ensures the Git info will be included in the session creation request
       await element.updateComplete;
 
       // Create session
@@ -899,7 +901,7 @@ describe('SessionCreateForm', () => {
 
       const requestBody = JSON.parse((sessionCall?.[1]?.body as string) || '{}');
       expect(requestBody.gitRepoPath).toBe('/home/user/project');
-      expect(requestBody.gitBranch).toBe('feature');
+      expect(requestBody.gitBranch).toBe('main'); // Should match the current branch from mock
     });
 
     it('should not include Git info for non-Git directories', async () => {

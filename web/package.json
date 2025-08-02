@@ -1,6 +1,6 @@
 {
   "name": "vibetunnel",
-  "version": "1.0.0-beta.16",
+  "version": "1.0.0-beta.15.1",
   "description": "Terminal sharing server with web interface - supports macOS, Linux, and headless environments",
   "main": "dist/server/server.js",
   "bin": {
@@ -12,6 +12,7 @@
     "bin/",
     "scripts/ensure-native-modules.js",
     "scripts/postinstall-npm.js",
+    "scripts/install-vt-command.js",
     "node-pty/lib/",
     "node-pty/package.json",
     "node-pty/binding.gyp",
