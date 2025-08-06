@@ -718,8 +718,11 @@ cleanupOnStartup: Bool = true
 # Complete build
 cd mac && ./scripts/build.sh --configuration Release --sign
 
-# Development build
-cd mac && ./scripts/build.sh --configuration Debug
+# Development build (with Poltergeist if available)
+poltergeist  # Automatic rebuilds on file changes
+
+# Or manual build
+cd mac && xcodebuild -project VibeTunnel.xcodeproj -scheme VibeTunnel -configuration Debug build
 ```
 
 **Build Phases**:

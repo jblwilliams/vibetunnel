@@ -47,6 +47,7 @@
 - [npm Package](#npm-package)
 - [Building from Source](#building-from-source)
 - [Development](#development)
+- [Poltergeist Integration](#poltergeist-integration)
 - [Documentation](#documentation)
 - [macOS Permissions](#macos-permissions)
 - [Contributing](#contributing)
@@ -915,6 +916,44 @@ VIBETUNNEL_LOG_LEVEL=silent vt npm test
 ```
 
 **Note**: All logs are always written to `~/.vibetunnel/log.txt` regardless of verbosity level. The verbosity settings only control what's displayed in the terminal.
+
+## Poltergeist Integration
+
+[Poltergeist](https://github.com/poltergeist/poltergeist) is an intelligent file watcher and auto-builder that can automatically rebuild VibeTunnel as you develop. This is particularly useful for native app development where manual rebuilds can interrupt your flow.
+
+### Setting Up Poltergeist
+
+1. **Install Poltergeist** (if not already installed):
+   ```bash
+   npm install -g poltergeist
+   ```
+
+2. **Start Poltergeist** in the VibeTunnel directory:
+   ```bash
+   cd /path/to/vibetunnel
+   poltergeist
+   ```
+
+3. **Make changes** - Poltergeist will automatically rebuild when it detects changes to:
+   - Swift files in `mac/` or `ios/`
+   - Xcode project files
+   - Configuration files
+
+### Poltergeist Features
+
+- **Automatic Rebuilds**: Detects file changes and rebuilds instantly
+- **Smart Debouncing**: Prevents excessive rebuilds during rapid edits
+- **Build Notifications**: macOS notifications for build success/failure
+- **Menu Bar Integration**: Monitor build status from the macOS menu bar
+- **Parallel Builds**: Can build macOS and iOS targets simultaneously
+
+### Configuration
+
+VibeTunnel includes a `poltergeist.config.json` that configures:
+- **vibetunnel** target: Builds the macOS app in Debug configuration
+- **vibetunnel-ios** target: Builds the iOS app (disabled by default)
+
+To enable iOS builds, edit `poltergeist.config.json` and set `"enabled": true` for the vibetunnel-ios target.
 
 ## Documentation
 

@@ -9,10 +9,17 @@ The main build orchestration happens through shell scripts in `mac/scripts/` tha
 
 ### macOS Application Build
 
-**Development Build** - Quick build without code signing:
+**Development Build with Poltergeist** (Recommended):
+```bash
+# Start Poltergeist for automatic rebuilds
+poltergeist
+# Make changes - app rebuilds automatically
+```
+
+**Development Build without Poltergeist**:
 ```bash
 cd mac
-./scripts/build.sh --configuration Debug
+xcodebuild -project VibeTunnel.xcodeproj -scheme VibeTunnel -configuration Debug build
 ```
 
 **Release Build** - Full build with code signing:
