@@ -87,6 +87,7 @@ struct SettingsView: View {
 /// General settings tab content.
 /// Provides options for basic app configuration and preferences.
 struct GeneralSettingsView: View {
+    private let keychain = KeychainService()
     @AppStorage("defaultFontSize")
     private var defaultFontSize: Double = 14
     @AppStorage("defaultTerminalWidth")
@@ -99,6 +100,10 @@ struct GeneralSettingsView: View {
     private var enableLivePreviews = true
     @AppStorage("colorSchemePreference")
     private var colorSchemePreferenceRaw = "system"
+    @AppStorage("transcriptionProvider") private var selectedProvider = "openai"
+    @State private var apiKey = ""
+    @State private var isSaving = false
+    @State private var saveSuccess = false
 
     enum ColorSchemePreference: String, CaseIterable {
         case system
@@ -241,7 +246,98 @@ struct GeneralSettingsView: View {
                 }
             }
 
+            // AI Speech-to-Text Section
+            VStack(alignment: .leading, spacing: Theme.Spacing.medium) {
+                Text("AI Speech-to-Text")
+                    .font(.headline)
+                    .foregroundColor(Theme.Colors.terminalForeground)
+
+                VStack(spacing: Theme.Spacing.medium) {
+                    // AI Provider Selection
+                    VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                        Text("Provider")
+                            .font(Theme.Typography.terminalSystem(size: 14))
+                            .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
+
+                        Picker("Provider", selection: $selectedProvider) {
+                            Text("Open AI").tag("openai")
+                            Text("Groq").tag("groq")
+                            Text("Deepgram").tag("deepgram")
+                            Text("ElevenLabs").tag("elevenlabs")
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+                        .onChange(of: selectedProvider) { _, newProvider in
+                            Task {
+                                loadApiKey(for: newProvider)
+                            }
+                        }
+                    }
+                    .padding()
+                    .background(Theme.Colors.cardBackground)
+                    .cornerRadius(Theme.CornerRadius.card)
+
+                    // API Key Input
+                    VStack(alignment: .leading, spacing: Theme.Spacing.small) {
+                        Text("API Key")
+                            .font(Theme.Typography.terminalSystem(size: 14))
+                            .foregroundColor(Theme.Colors.terminalForeground.opacity(0.7))
+
+                        SecureField("Enter your API key", text: $apiKey)
+                            .font(Theme.Typography.terminalSystem(size: 14))
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .autocorrectionDisabled()
+                            .onSubmit {
+                                Task {
+                                    await saveApiKey()
+                                }
+                            }
+
+                        if isSaving {
+                            HStack {
+                                ProgressView()
+                                    .controlSize(.small)
+                                Text("Saving...")
+                                    .font(Theme.Typography.terminalSystem(size: 12))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        if saveSuccess {
+                            Label("API Key Saved", systemImage: "checkmark.circle.fill")
+                                .font(Theme.Typography.terminalSystem(size: 12))
+                                .foregroundStyle(.green)
+                        }
+                    }
+                    .padding()
+                    .background(Theme.Colors.cardBackground)
+                    .cornerRadius(Theme.CornerRadius.card)
+                }
+            }
+
             Spacer()
+        }
+        .task {
+            loadApiKey(for: selectedProvider)
+        }
+    }
+
+    private func loadApiKey(for provider: String) {
+        apiKey = (try? keychain.loadPassword(for: provider)) ?? ""
+    }
+
+    private func saveApiKey() async {
+        isSaving = true
+        defer { isSaving = false }
+
+        do {
+            try keychain.savePassword(apiKey, for: selectedProvider)
+            saveSuccess = true
+
+            // Hide success message after 2 seconds
+            try? await Task.sleep(for: .seconds(2))
+            saveSuccess = false
+        } catch {
+            // Handle error (could show alert here)
         }
     }
 }

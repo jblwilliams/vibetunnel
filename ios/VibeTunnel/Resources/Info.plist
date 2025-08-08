@@ -125,5 +125,7 @@
 	<array>
 		<string>_vibetunnel._tcp</string>
 	</array>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>VibeTunnel uses the microphone for speech-to-text input in terminal sessions. This allows you to dictate commands and text using your voice.</string>
 </dict>
 </plist>

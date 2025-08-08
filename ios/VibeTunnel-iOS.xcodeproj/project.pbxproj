@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		51D8512C630C0A818A2651F4 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7C27ECCFC47CD72452A9FD3E /* Foundation.framework */; };
 		7272E2FE084BB86440A69701 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = 51D59A51D50DE7492ECEAA6F /* SwiftTerm */; };
+		D0EA0C842E452D55008F703B /* TachikomaAudio in Frameworks */ = {isa = PBXBuildFile; productRef = D0EA0C832E452D55008F703B /* TachikomaAudio */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,6 +70,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7272E2FE084BB86440A69701 /* SwiftTerm in Frameworks */,
+				D0EA0C842E452D55008F703B /* TachikomaAudio in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -152,6 +154,7 @@
 			name = VibeTunnel;
 			packageProductDependencies = (
 				51D59A51D50DE7492ECEAA6F /* SwiftTerm */,
+				D0EA0C832E452D55008F703B /* TachikomaAudio */,
 			);
 			productName = VibeTunnel;
 			productReference = 216D52E392D8F0CDC6358BB8 /* VibeTunnel.app */;
@@ -186,6 +189,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				99D7F1C619326805A282313E /* XCRemoteSwiftPackageReference "SwiftTerm" */,
+				D0EA0C822E452D55008F703B /* XCRemoteSwiftPackageReference "Tachikoma" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7866022B46DD9C411CAEDA26 /* Products */;
@@ -597,6 +601,14 @@
 				minimumVersion = 1.2.0;
 			};
 		};
+		D0EA0C822E452D55008F703B /* XCRemoteSwiftPackageReference "Tachikoma" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/jblwilliams/Tachikoma";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -604,6 +616,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 99D7F1C619326805A282313E /* XCRemoteSwiftPackageReference "SwiftTerm" */;
 			productName = SwiftTerm;
+		};
+		D0EA0C832E452D55008F703B /* TachikomaAudio */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D0EA0C822E452D55008F703B /* XCRemoteSwiftPackageReference "Tachikoma" */;
+			productName = TachikomaAudio;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

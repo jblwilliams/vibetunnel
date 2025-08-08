@@ -15,14 +15,18 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", exact: "1.2.5"),
-        .package(url: "https://github.com/mhdhejazi/Dynamic.git", from: "1.2.0")
+        .package(url: "https://github.com/mhdhejazi/Dynamic.git", from: "1.2.0"),
+        // TODO: Update to https://github.com/steipete/Tachikoma once https://github.com/steipete/Tachikoma/pull/3 is merged
+        .package(url: "https://github.com/jblwilliams/Tachikoma", branch: "main")
     ],
     targets: [
         .target(
             name: "VibeTunnelDependencies",
             dependencies: [
                 .product(name: "SwiftTerm", package: "SwiftTerm"),
-                .product(name: "Dynamic", package: "Dynamic")
+                .product(name: "Dynamic", package: "Dynamic"),
+                .product(name: "Tachikoma", package: "Tachikoma"),
+                .product(name: "TachikomaAudio", package: "Tachikoma")
             ],
             swiftSettings: [
                 .swiftLanguageVersion(.v5)

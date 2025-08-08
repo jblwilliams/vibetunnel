@@ -8,9 +8,13 @@ struct VibeTunnelApp: App {
     @State private var connectionManager = ConnectionManager.shared
     @State private var navigationManager = NavigationManager()
     @State private var networkMonitor = NetworkMonitor.shared
+    @State private var audioService = AudioService()
+    @State private var transcriptionService: TranscriptionService?
 
     @AppStorage("colorSchemePreference")
     private var colorSchemePreferenceRaw = "system"
+
+    @AppStorage("transcriptionProvider") private var provider = "openai"
 
     init() {
         // Configure app logging level
@@ -22,6 +26,8 @@ struct VibeTunnelApp: App {
             ContentView()
                 .environment(connectionManager)
                 .environment(navigationManager)
+                .environment(audioService)
+                .environment(transcriptionService)
                 .offlineBanner()
                 .onOpenURL { url in
                     handleURL(url)
@@ -29,6 +35,9 @@ struct VibeTunnelApp: App {
                 .task {
                     // Initialize network monitoring
                     _ = networkMonitor
+
+                    // Initialize TranscriptionService with saved provider and API key
+                    await initializeTranscriptionService()
                 }
                 .preferredColorScheme(colorScheme)
             #if targetEnvironment(macCatalyst)
@@ -51,6 +60,17 @@ struct VibeTunnelApp: App {
             return styleRaw == "inline" ? .inline : .standard
         }
     #endif
+
+    private func initializeTranscriptionService() async {
+        guard let providerType = TranscriptionService.AIProvider(rawValue: provider),
+              let apiKey = try? KeychainService().loadPassword(for: provider),
+              !apiKey.isEmpty
+        else {
+            return
+        }
+
+        transcriptionService = TranscriptionService(provider: providerType, apiKey: apiKey)
+    }
 
     private func handleURL(_ url: URL) {
         // Handle vibetunnel://session/{sessionId} URLs
